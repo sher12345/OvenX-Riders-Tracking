@@ -14,7 +14,6 @@
         #wrapper { display: flex; flex-direction: column; height: 100vh; width: 100vw; }
         header { background: var(--red); color: white; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 4px solid var(--orange); z-index: 5000; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
         
-        /* Admin Map View */
         #admin-view { position: relative; flex: 1; width: 100%; height: 100%; display: none; }
         #map { position: absolute; top: 0; bottom: 0; width: 100%; height: 100%; z-index: 1; background: #ddd; }
         #sidebar { position: absolute; top: 15px; left: 15px; width: 260px; max-height: 70%; background: rgba(255, 255, 255, 0.95); z-index: 1000; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); padding: 15px; overflow-y: auto; border: 2px solid var(--orange); backdrop-filter: blur(8px); }
@@ -22,9 +21,7 @@
         .rider-list-item b { color: var(--red); font-size: 15px; display: block; text-transform: uppercase; }
         .locate-btn { background: var(--orange); color: white; border: none; padding: 8px; width: 100%; border-radius: 10px; cursor: pointer; font-weight: 900; margin-top: 5px; font-size: 10px; }
 
-        /* Rider UI */
         #rider-view { flex: 1; display: none; padding: 20px; text-align: center; overflow-y: auto; }
-        .setup-guide { background: #fff3cd; color: #856404; padding: 15px; border-radius: 15px; text-align: left; font-size: 13px; margin-bottom: 20px; border: 1px solid #ffeeba; }
         .login-card { background: white; padding: 30px 25px; border-radius: 35px; box-shadow: 0 15px 40px rgba(0,0,0,0.1); max-width: 400px; margin: auto; }
         input { width: 100%; padding: 18px; border-radius: 15px; border: 2px solid #eee; margin-bottom: 20px; font-size: 18px; box-sizing: border-box; text-align: center; }
         .btn-online { background: var(--orange); color: white; padding: 20px; border-radius: 50px; border: none; font-weight: 900; width: 100%; cursor: pointer; font-size: 18px; box-shadow: 0 6px 0 #b34e12; }
@@ -33,17 +30,13 @@
         .live-pulse { width: 15px; height: 15px; background: #2ecc71; border-radius: 50%; display: inline-block; margin-right: 10px; box-shadow: 0 0 10px #2ecc71; animation: pulse 1.5s infinite; }
         @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
 
-        /* Map UI Tools */
         .map-tools { position: absolute; bottom: 30px; right: 20px; z-index: 1000; display: flex; flex-direction: column; gap: 12px; }
         .tool-btn { width: 55px; height: 55px; border-radius: 15px; background: white; border: 2px solid var(--orange); box-shadow: 0 5px 15px rgba(0,0,0,0.2); cursor: pointer; font-size: 24px; display: flex; align-items: center; justify-content: center; }
         
-        /* Marker Logic */
         .shop-tooltip { background: var(--red); color: white; padding: 5px 12px; border-radius: 5px; font-weight: 900; border: 2px solid var(--orange); font-size: 12px; }
         .rider-tooltip { background: var(--orange); color: white; border: 2px solid white; border-radius: 8px; padding: 5px 10px; font-weight: bold; text-align: center; }
 
-        /* Smooth Movement Class */
-        .leaflet-marker-icon { transition: transform 1s linear !important; }
-
+        .leaflet-marker-icon { transition: transform 0.5s linear !important; }
         #keepAliveVideo { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
     </style>
 </head>
@@ -55,6 +48,7 @@
         <div id="status-tag" style="background:rgba(255,255,255,0.2); padding: 5px 12px; border-radius: 20px; font-size: 11px; font-weight: 900; display:none;">0 ACTIVE</div>
     </header>
 
+    <!-- ADMIN VIEW -->
     <div id="admin-view">
         <div id="sidebar">
             <h3 style="margin-top:0; font-size: 16px; border-bottom: 3px solid var(--orange); padding-bottom: 8px; color: var(--red);">FLEET CONTROL</h3>
@@ -67,13 +61,8 @@
         </div>
     </div>
 
+    <!-- RIDER VIEW -->
     <div id="rider-view">
-        <div class="setup-guide">
-            <b>⚠️ MANDATORY STEP FOR BACKGROUND TRACKING:</b><br>
-            1. Long press <b>Chrome</b> icon > App Info.<br>
-            2. Go to <b>Battery</b> > Select <b>"Unrestricted"</b>.
-        </div>
-
         <div class="login-card" id="login-card">
             <h2 style="color:var(--red); margin:0;">Rider Login</h2>
             <p style="color:#666; margin-bottom:20px; font-size: 14px;">Shift HQ: Block A, Gulgasht</p>
@@ -89,7 +78,7 @@
                     <b style="color:#2e7d32; font-size: 18px;">LOCATION IS LIVE</b>
                 </div>
                 <p style="background: #f8f9fa; padding: 15px; border-radius: 15px; font-size: 13px; color: #555;">
-                    ✅ Screen can be turned off.<br>
+                    ✅ Tracking will resume automatically if you refresh.<br>
                     ❌ <b>Do not close Chrome.</b>
                 </p>
                 <button onclick="stopShift()" style="margin-top:20px; background:none; border:none; color:#999; text-decoration:underline; font-size: 12px;">End Shift Early</button>
@@ -117,31 +106,40 @@
             initMap();
         } else {
             document.getElementById('rider-view').style.display = 'block';
+            checkAutoResume(); // New: Check if rider was already logged in
         }
     };
 
-    async function startRider() {
+    function checkAutoResume() {
+        const savedSession = localStorage.getItem('ovenx_rider_session');
+        if (savedSession) {
+            const data = JSON.parse(savedSession);
+            document.getElementById('riderName').value = data.name;
+            startRider(true, data.startTime);
+        }
+    }
+
+    async function startRider(isResume = false, resumedTime = null) {
         const name = document.getElementById('riderName').value.trim();
         if(!name) return alert("Enter name!");
-        const video = document.getElementById('keepAliveVideo');
-        video.play();
 
-        if ('mediaSession' in navigator) {
-            navigator.mediaSession.metadata = new MediaMetadata({
-                title: 'Oven X Tracking Active',
-                artist: 'Shift in Progress',
-                album: 'Gulgasht HQ'
-            });
-        }
+        // Start background hack
+        const video = document.getElementById('keepAliveVideo');
+        video.play().catch(e => console.log("Video auto-play blocked, waiting for interaction"));
 
         if ('wakeLock' in navigator) { try { await navigator.wakeLock.request('screen'); } catch(e){} }
 
+        // UI Updates
         document.getElementById('login-card').style.display = 'none';
-        document.querySelector('.setup-guide').style.display = 'none';
         document.getElementById('active-info').style.display = 'block';
         document.getElementById('hello-user').innerText = name;
 
-        const startTime = Date.now();
+        const startTime = resumedTime || Date.now();
+        
+        // Save session so it persists after refresh or code update
+        localStorage.setItem('ovenx_rider_session', JSON.stringify({name: name, startTime: startTime}));
+
+        // Optimized GPS Watcher
         navigator.geolocation.watchPosition((pos) => {
             const out = {
                 n: name, lt: pos.coords.latitude, lg: pos.coords.longitude,
@@ -149,20 +147,32 @@
                 start: startTime, now: Date.now()
             };
             fetch(`https://ntfy.sh/${CHANNEL_ID}`, { method: 'POST', body: JSON.stringify(out) });
-        }, null, { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 });
+        }, (err) => {
+            console.error("GPS Error", err);
+        }, { 
+            enableHighAccuracy: true, 
+            maximumAge: 0, // Force fresh data, don't use old location
+            timeout: 10000 
+        });
 
-        window.onbeforeunload = function() { return "Shift tracking will stop!"; };
+        window.onbeforeunload = function() { return "Tracking will pause!"; };
     }
 
     function stopShift() {
-        if(confirm("End shift?")) { window.onbeforeunload = null; location.reload(); }
+        if(confirm("End shift? This will clear your login.")) { 
+            localStorage.removeItem('ovenx_rider_session');
+            window.onbeforeunload = null; 
+            location.reload(); 
+        }
     }
 
+    // --- ADMIN LOGIC ---
     function initMap() {
         setTimeout(() => {
-            map = L.map('map', { zoomControl: false }).setView(SHOP_POS, 18);
+            // FIXED: Map only centers on start. It won't jump again unless you click buttons.
+            map = L.map('map', { zoomControl: false }).setView(SHOP_POS, 17);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-            L.marker(SHOP_POS).addTo(map).bindTooltip("OVEN X HQ - BLOCK A", { permanent: true, direction: 'bottom', className: 'shop-tooltip' });
+            L.marker(SHOP_POS).addTo(map).bindTooltip("OVEN X HQ", { permanent: true, direction: 'bottom', className: 'shop-tooltip' });
             setTimeout(() => { map.invalidateSize(); }, 600);
             startSSE();
         }, 200);
@@ -182,11 +192,10 @@
         fleetData[data.n] = data;
         const coords = [data.lt, data.lg];
         const mins = Math.floor((Date.now() - data.start) / 60000);
-        const timeLabel = mins > 60 ? Math.floor(mins/60) + "h " + (mins%60) + "m" : mins + "m";
-        const label = `<b>${data.n}</b><br>${timeLabel} out | ${data.s} km/h`;
+        const label = `<b>${data.n}</b><br>${mins}m out | ${data.s} km/h`;
 
         if (markers[data.n]) {
-            // SMOOTH FLOW: Marker will transition to new coords over 1 second
+            // Marker moves smoothly to the new position
             markers[data.n].setLatLng(coords).setTooltipContent(label);
         } else {
             markers[data.n] = L.marker(coords).addTo(map).bindTooltip(label, { permanent: true, direction: 'top', className: 'rider-tooltip' });
