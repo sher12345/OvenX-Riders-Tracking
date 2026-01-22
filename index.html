@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Oven X - Multan Command</title>
+    <title>Oven X - Multan HQ</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -22,18 +22,19 @@
         header h1 { margin: 0; font-size: 20px; text-transform: uppercase; letter-spacing: 1px; }
         header span { color: var(--orange); }
 
-        /* RIDER LOGIN */
-        #rider-view { height: 100%; display: none; padding-top: 50px; }
+        /* RIDER VIEW UI */
+        #rider-view { height: 100%; display: none; padding-top: 40px; box-sizing: border-box; }
         .card { background: white; margin: 0 auto; width: 85%; max-width: 400px; padding: 30px; border-radius: 30px; box-shadow: 0 15px 35px rgba(0,0,0,0.1); text-align: center; }
+        .warning { background: #fff3cd; color: #856404; padding: 15px; border-radius: 15px; font-size: 13px; text-align: left; margin-bottom: 20px; border: 1px solid #ffeeba; }
         input { width: 100%; padding: 15px; border-radius: 15px; border: 2px solid #eee; margin-bottom: 20px; font-size: 18px; box-sizing: border-box; outline: none; }
         .btn { background: var(--orange); color: white; padding: 18px; border-radius: 50px; border: none; font-weight: 900; width: 100%; cursor: pointer; box-shadow: 0 5px 0 #b34e12; text-transform: uppercase; transition: 0.2s; }
         .btn:active { transform: translateY(3px); box-shadow: 0 2px 0 #b34e12; }
 
-        /* ADMIN MAP VIEW */
+        /* ADMIN VIEW UI */
         #admin-view { height: 100%; display: none; position: relative; }
         #map { height: 100%; width: 100%; z-index: 1; }
 
-        /* MAP CONTROLS */
+        /* MAP BUTTONS */
         .map-controls {
             position: absolute; bottom: 30px; right: 20px;
             display: flex; flex-direction: column; gap: 10px; z-index: 1000;
@@ -43,22 +44,19 @@
             border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.2);
             font-size: 24px; cursor: pointer; display: flex; align-items: center; justify-content: center;
         }
-        .control-btn:active { background: #eee; }
 
-        /* TOOLTIP / MARKER STYLE */
+        /* TOOLTIP STYLE */
         .rider-tooltip {
             background: var(--red); color: white; border: 2px solid var(--orange);
-            border-radius: 10px; padding: 5px 10px; font-weight: bold; text-align: center;
+            border-radius: 10px; padding: 6px 12px; font-weight: bold; text-align: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
         }
-        .rider-tooltip::before { border-top-color: var(--red); }
-        
         .branch-marker {
-            background: var(--orange); color: white; padding: 5px 10px;
-            border-radius: 5px; font-weight: 900; border: 2px solid white;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+            background: var(--orange); color: white; padding: 5px 12px;
+            border-radius: 8px; font-weight: 900; border: 2px solid white;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3); font-size: 11px;
         }
 
-        /* STATUS */
         #status-bar { background: #25D366; color: white; text-align: center; padding: 8px; font-weight: bold; font-size: 13px; display: none; }
         #keepAliveVideo { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
     </style>
@@ -66,24 +64,27 @@
 <body>
 
 <header>
-    <h1>OVEN <span>X</span> COMMAND</h1>
-    <div id="active-count" style="font-size: 12px; background: rgba(0,0,0,0.2); padding: 5px 10px; border-radius: 20px; display: none;">0 RIDERS LIVE</div>
+    <h1>OVEN <span>X</span> HQ</h1>
+    <div id="active-count" style="font-size: 12px; background: rgba(0,0,0,0.2); padding: 5px 10px; border-radius: 20px; display: none;">0 RIDERS</div>
 </header>
 <div id="status-bar">📡 SIGNAL ACTIVE - DO NOT CLOSE</div>
 
 <!-- RIDER INTERFACE -->
 <div id="rider-view">
     <div class="card" id="login-box">
-        <h3 style="color: var(--red);">RIDER DISPATCH</h3>
-        <p style="font-size: 13px; color: #666;">Enter name to start delivery shift.</p>
-        <input type="text" id="riderName" placeholder="Rider Name">
+        <div class="warning">
+            <b>⚙️ ANDROID SETUP:</b><br>
+            Long press Chrome icon > App Info > Battery > <b>Unrestricted</b>.
+        </div>
+        <h3 style="color: var(--red); margin-top:0;">RIDER DISPATCH</h3>
+        <input type="text" id="riderName" placeholder="Enter Your Name">
         <button class="btn" onclick="startRiderSession()">Start Delivery</button>
     </div>
     <div class="card" id="active-box" style="display:none;">
         <h2 id="hello-name" style="color: var(--red); margin: 0;"></h2>
-        <div style="color: #25D366; font-weight: 900; font-size: 20px; margin: 15px 0;">ONLINE & TRACKING</div>
-        <p style="color: #888; font-size: 14px;">Screen can be turned OFF now.<br>Keep phone in pocket.</p>
-        <button class="btn" style="background:#555; box-shadow:0 5px 0 #222; margin-top:20px;" onclick="location.reload()">End Shift</button>
+        <div style="color: #25D366; font-weight: 900; font-size: 20px; margin: 15px 0;">TRACKING ACTIVE</div>
+        <p style="color: #888; font-size: 14px;">Screen can be turned OFF now.</p>
+        <button class="btn" style="background:#555; box-shadow:0 5px 0 #222;" onclick="location.reload()">End Shift</button>
     </div>
 </div>
 
@@ -101,15 +102,14 @@
 </video>
 
 <script>
-    // --- OVENX CONFIG ---
-    const TOPIC = 'ovenx_multan_delivery_hq_01'; // Your secret channel
-    const SHOP_COORD = [30.2248, 71.4883]; // OvenX Multan Branch (Bosan Road area)
+    // --- UPDATED COORDINATES ---
+    const SHOP_COORD = [30.223300, 71.496100]; 
+    const TOPIC = 'ovenx_multan_hq_track_786'; 
     
     const params = new URLSearchParams(window.location.search);
     const isAdmin = params.get('admin') === 'true';
 
     let map, markers = {};
-    let startTime = Date.now();
 
     if (isAdmin) {
         initAdminMap();
@@ -117,7 +117,6 @@
         document.getElementById('rider-view').style.display = 'block';
     }
 
-    // --- RIDER LOGIC ---
     async function startRiderSession() {
         const name = document.getElementById('riderName').value.trim();
         if (!name) return alert("Enter name!");
@@ -138,28 +137,23 @@
                 lat: pos.coords.latitude,
                 lng: pos.coords.longitude,
                 spd: pos.coords.speed ? Math.round(pos.coords.speed * 3.6) : 0,
-                start: sessionStart, // Send when they started
+                start: sessionStart,
                 upd: Date.now()
             };
-
             fetch(`https://ntfy.sh/${TOPIC}`, { method: 'POST', body: JSON.stringify(payload) });
         }, null, { enableHighAccuracy: true });
     }
 
-    // --- ADMIN LOGIC ---
     function initAdminMap() {
         document.getElementById('admin-view').style.display = 'block';
         document.getElementById('active-count').style.display = 'block';
 
-        // Professional Dark Mode Style Map
-        map = L.map('map', { zoomControl: false }).setView(SHOP_COORD, 14);
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-            attribution: 'OvenX Multan'
-        }).addTo(map);
+        map = L.map('map', { zoomControl: false }).setView(SHOP_COORD, 15);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(map);
 
-        // Add Shop Marker
+        // Shop Marker at your exact coordinates
         L.marker(SHOP_COORD).addTo(map)
-            .bindTooltip("OVENX MULTAN BRANCH", { permanent: true, direction: 'bottom', className: 'branch-marker' });
+            .bindTooltip("OVENX MULTAN HQ", { permanent: true, direction: 'bottom', className: 'branch-marker' });
 
         const source = new EventSource(`https://ntfy.sh/${TOPIC}/sse`);
         source.onmessage = (e) => {
@@ -171,13 +165,9 @@
     }
 
     function updateRiderMarker(data) {
-        const now = Date.now();
-        const durationMinutes = Math.floor((now - data.start) / 60000);
-        
+        const durationMinutes = Math.floor((Date.now() - data.start) / 60000);
         let timeLabel = durationMinutes + "m out";
-        if (durationMinutes > 60) {
-            timeLabel = Math.floor(durationMinutes/60) + "h " + (durationMinutes%60) + "m out";
-        }
+        if (durationMinutes > 60) timeLabel = Math.floor(durationMinutes/60) + "h " + (durationMinutes%60) + "m out";
 
         const infoText = `<b>${data.n}</b><br><small>${timeLabel}</small><br>${data.spd} km/h`;
 
@@ -188,23 +178,14 @@
                 .bindTooltip(infoText, { permanent: true, direction: 'top', className: 'rider-tooltip' })
                 .openTooltip();
         }
-        
-        // Update rider count
-        const activeRiders = Object.keys(markers).length;
-        document.getElementById('active-count').innerText = `${activeRiders} RIDERS LIVE`;
+        document.getElementById('active-count').innerText = `${Object.keys(markers).length} RIDERS`;
     }
 
-    function centerShop() {
-        map.flyTo(SHOP_COORD, 16);
-    }
-
+    function centerShop() { map.flyTo(SHOP_COORD, 17); }
     function centerRiders() {
         const group = new L.featureGroup(Object.values(markers));
-        if (group.getLayers().length > 0) {
-            map.fitBounds(group.getBounds().pad(0.2));
-        } else {
-            centerShop();
-        }
+        if (group.getLayers().length > 0) map.fitBounds(group.getBounds().pad(0.3));
+        else centerShop();
     }
 </script>
 
