@@ -14,6 +14,7 @@
         #wrapper { display: flex; flex-direction: column; height: 100vh; width: 100vw; }
         header { background: var(--red); color: white; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 4px solid var(--orange); z-index: 5000; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
         
+        /* Admin Map View */
         #admin-view { position: relative; flex: 1; width: 100%; height: 100%; display: none; }
         #map { position: absolute; top: 0; bottom: 0; width: 100%; height: 100%; z-index: 1; background: #ddd; }
         #sidebar { position: absolute; top: 15px; left: 15px; width: 260px; max-height: 70%; background: rgba(255, 255, 255, 0.95); z-index: 1000; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); padding: 15px; overflow-y: auto; border: 2px solid var(--orange); backdrop-filter: blur(8px); }
@@ -21,7 +22,9 @@
         .rider-list-item b { color: var(--red); font-size: 15px; display: block; text-transform: uppercase; }
         .locate-btn { background: var(--orange); color: white; border: none; padding: 8px; width: 100%; border-radius: 10px; cursor: pointer; font-weight: 900; margin-top: 5px; font-size: 10px; }
 
+        /* Rider UI */
         #rider-view { flex: 1; display: none; padding: 20px; text-align: center; overflow-y: auto; }
+        .setup-guide { background: #fff3cd; color: #856404; padding: 15px; border-radius: 15px; text-align: left; font-size: 13px; margin-bottom: 20px; border: 1px solid #ffeeba; line-height: 1.5; }
         .login-card { background: white; padding: 30px 25px; border-radius: 35px; box-shadow: 0 15px 40px rgba(0,0,0,0.1); max-width: 400px; margin: auto; }
         input { width: 100%; padding: 18px; border-radius: 15px; border: 2px solid #eee; margin-bottom: 20px; font-size: 18px; box-sizing: border-box; text-align: center; }
         .btn-online { background: var(--orange); color: white; padding: 20px; border-radius: 50px; border: none; font-weight: 900; width: 100%; cursor: pointer; font-size: 18px; box-shadow: 0 6px 0 #b34e12; }
@@ -36,8 +39,7 @@
         .shop-tooltip { background: var(--red); color: white; padding: 5px 12px; border-radius: 5px; font-weight: 900; border: 2px solid var(--orange); font-size: 12px; }
         .rider-tooltip { background: var(--orange); color: white; border: 2px solid white; border-radius: 8px; padding: 5px 10px; font-weight: bold; text-align: center; }
 
-        .leaflet-marker-icon { transition: transform 0.5s linear !important; }
-        #keepAliveVideo { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+        .leaflet-marker-icon { transition: transform 0.8s linear !important; }
     </style>
 </head>
 <body>
@@ -63,9 +65,16 @@
 
     <!-- RIDER VIEW -->
     <div id="rider-view">
+        <div class="setup-guide" id="setup-guide">
+            <b>⚠️ FIX FOR DISCONNECTS:</b><br>
+            1. Long press <b>Chrome</b> > App Info.<br>
+            2. <b>Battery</b> > Select <b>"Unrestricted"</b>.<br>
+            3. Turn <b>OFF</b> "Power Saving Mode" on phone.
+        </div>
+
         <div class="login-card" id="login-card">
             <h2 style="color:var(--red); margin:0;">Rider Login</h2>
-            <p style="color:#666; margin-bottom:20px; font-size: 14px;">Shift HQ: Block A, Gulgasht</p>
+            <p style="color:#666; margin-bottom:20px; font-size: 14px;">Shift End: 02:00 AM</p>
             <input type="text" id="riderName" placeholder="Enter Full Name">
             <button class="btn-online" onclick="startRider()">START MY SHIFT</button>
         </div>
@@ -77,9 +86,11 @@
                     <span class="live-pulse"></span>
                     <b style="color:#2e7d32; font-size: 18px;">LOCATION IS LIVE</b>
                 </div>
-                <p style="background: #f8f9fa; padding: 15px; border-radius: 15px; font-size: 13px; color: #555;">
-                    ✅ Tracking will resume automatically if you refresh.<br>
-                    ❌ <b>Do not close Chrome.</b>
+                <p style="background: #f8f9fa; padding: 15px; border-radius: 15px; font-size: 13px; color: #555; text-align: left;">
+                    ✅ Always-On Tracking Enabled.<br>
+                    ✅ Screen can be turned off.<br>
+                    ❌ <b>Do not close Chrome app.</b><br>
+                    ❌ <b>Do not swipe away this tab.</b>
                 </p>
                 <button onclick="stopShift()" style="margin-top:20px; background:none; border:none; color:#999; text-decoration:underline; font-size: 12px;">End Shift Early</button>
             </div>
@@ -87,9 +98,10 @@
     </div>
 </div>
 
-<video id="keepAliveVideo" playsinline muted loop>
-    <source src="https://raw.githubusercontent.com/anars/blank-audio/master/10-minutes-of-silence.mp3">
-</video>
+<!-- Super-Stay-Alive Audio Hack (Built-in Base64 Silence) -->
+<audio id="stayAliveAudio" loop playsinline>
+    <source src="data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAAAA== " type="audio/wav">
+</audio>
 
 <script>
     const SHOP_POS = [30.216949, 71.470271]; 
@@ -97,7 +109,7 @@
     
     const params = new URLSearchParams(window.location.search);
     const isAdmin = params.get('admin') === 'true';
-    let map, markers = {}, fleetData = {};
+    let map, markers = {}, fleetData = {}, wakeLock = null;
 
     window.onload = function() {
         if (isAdmin) {
@@ -106,7 +118,7 @@
             initMap();
         } else {
             document.getElementById('rider-view').style.display = 'block';
-            checkAutoResume(); // New: Check if rider was already logged in
+            checkAutoResume();
         }
     };
 
@@ -115,7 +127,8 @@
         if (savedSession) {
             const data = JSON.parse(savedSession);
             document.getElementById('riderName').value = data.name;
-            startRider(true, data.startTime);
+            // Add a small delay for user interaction to allow audio play
+            document.getElementById('login-card').innerHTML = `<h2 style="color:var(--red)">Welcome Back!</h2><p>Click to resume tracking</p><button class="btn-online" onclick="startRider(true, ${data.startTime})">RESUME TRACKING</button>`;
         }
     }
 
@@ -123,43 +136,55 @@
         const name = document.getElementById('riderName').value.trim();
         if(!name) return alert("Enter name!");
 
-        // Start background hack
-        const video = document.getElementById('keepAliveVideo');
-        video.play().catch(e => console.log("Video auto-play blocked, waiting for interaction"));
+        // Start Built-in Audio Loop (Tricks Android into keeping browser active)
+        const audio = document.getElementById('stayAliveAudio');
+        audio.play().catch(e => console.log("Audio Play Failed", e));
 
-        if ('wakeLock' in navigator) { try { await navigator.wakeLock.request('screen'); } catch(e){} }
+        // Attempt WakeLock to keep CPU alive
+        if ('wakeLock' in navigator) {
+            try { wakeLock = await navigator.wakeLock.request('screen'); } catch(e){}
+        }
 
-        // UI Updates
+        // Set Media Session Metadata so it shows on lock screen
+        if ('mediaSession' in navigator) {
+            navigator.mediaSession.metadata = new MediaMetadata({
+                title: 'Oven X: Tracking Active',
+                artist: name,
+                album: 'Gulgasht HQ'
+            });
+        }
+
         document.getElementById('login-card').style.display = 'none';
+        document.getElementById('setup-guide').style.display = 'none';
         document.getElementById('active-info').style.display = 'block';
         document.getElementById('hello-user').innerText = name;
 
         const startTime = resumedTime || Date.now();
-        
-        // Save session so it persists after refresh or code update
         localStorage.setItem('ovenx_rider_session', JSON.stringify({name: name, startTime: startTime}));
 
-        // Optimized GPS Watcher
+        // GPS Watcher with High Priority
         navigator.geolocation.watchPosition((pos) => {
             const out = {
                 n: name, lt: pos.coords.latitude, lg: pos.coords.longitude,
                 s: pos.coords.speed ? Math.round(pos.coords.speed * 3.6) : 0,
                 start: startTime, now: Date.now()
             };
-            fetch(`https://ntfy.sh/${CHANNEL_ID}`, { method: 'POST', body: JSON.stringify(out) });
+            fetch(`https://ntfy.sh/${CHANNEL_ID}`, { method: 'POST', body: JSON.stringify(out) })
+            .catch(e => console.log("Network error, retrying..."));
         }, (err) => {
             console.error("GPS Error", err);
         }, { 
             enableHighAccuracy: true, 
-            maximumAge: 0, // Force fresh data, don't use old location
-            timeout: 10000 
+            maximumAge: 0, 
+            timeout: 15000 
         });
 
-        window.onbeforeunload = function() { return "Tracking will pause!"; };
+        // Prevention against accidental close
+        window.onbeforeunload = () => "Tracking will stop!";
     }
 
     function stopShift() {
-        if(confirm("End shift? This will clear your login.")) { 
+        if(confirm("End shift?")) { 
             localStorage.removeItem('ovenx_rider_session');
             window.onbeforeunload = null; 
             location.reload(); 
@@ -169,7 +194,6 @@
     // --- ADMIN LOGIC ---
     function initMap() {
         setTimeout(() => {
-            // FIXED: Map only centers on start. It won't jump again unless you click buttons.
             map = L.map('map', { zoomControl: false }).setView(SHOP_POS, 17);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
             L.marker(SHOP_POS).addTo(map).bindTooltip("OVEN X HQ", { permanent: true, direction: 'bottom', className: 'shop-tooltip' });
@@ -195,7 +219,6 @@
         const label = `<b>${data.n}</b><br>${mins}m out | ${data.s} km/h`;
 
         if (markers[data.n]) {
-            // Marker moves smoothly to the new position
             markers[data.n].setLatLng(coords).setTooltipContent(label);
         } else {
             markers[data.n] = L.marker(coords).addTo(map).bindTooltip(label, { permanent: true, direction: 'top', className: 'rider-tooltip' });
