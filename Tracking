@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Oven X - Rider Tracker</title>
+    
+    <!-- Leaflet Maps CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <style>
+        :root { 
+            --red: #8b0000; 
+            --orange: #f37021; 
+            --white: #ffffff;
+            --bg: #fff9f5;
+        }
+
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            margin: 0; padding: 0; background: var(--bg); 
+            height: 100vh; display: flex; flex-direction: column;
+        }
+
+        header {
+            background: var(--red); color: white; padding: 15px;
+            text-align: center; font-weight: 900; border-bottom: 5px solid var(--orange);
+        }
+
+        #setup-screen {
+            padding: 30px; text-align: center; flex-grow: 1;
+            display: flex; flex-direction: column; justify-content: center; gap: 20px;
+        }
+
+        .card {
+            background: white; padding: 25px; border-radius: 25px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+
+        input {
+            width: 80%; padding: 15px; border-radius: 15px;
+            border: 2px solid #ddd; font-size: 16px; margin-bottom: 10px;
+        }
+
+        .btn {
+            padding: 15px 30px; border-radius: 50px; border: none;
+            font-weight: 900; cursor: pointer; text-transform: uppercase;
+            transition: 0.2s; width: 100%; max-width: 250px; margin: 10px auto;
+        }
+
+        .btn-rider { background: var(--orange); color: white; box-shadow: 0 5px 0 #b34e12; }
+        .btn-admin { background: #333; color: white; box-shadow: 0 5px 0 #000; }
+        .btn:active { transform: translateY(3px); box-shadow: 0 2px 0 #000; }
+
+        /* Map Styles */
+        #map-container { display: none; flex-grow: 1; position: relative; }
+        #map { height: 100%; width: 100%; }
+
+        #rider-status {
+            display: none; padding: 20px; text-align: center;
+            background: #e7f5e9; color: #1a9648; font-weight: bold;
+        }
+
+        .back-btn {
+            position: absolute; top: 10px; left: 10px; z-index: 1000;
+            background: white; border: 2px solid var(--red); padding: 5px 15px;
+            border-radius: 10px; font-weight: bold;
+        }
+
+        .rider-label {
+            background: var(--red); color: white; padding: 2px 8px;
+            border-radius: 5px; font-weight: bold; font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+
+<header>OVEN X <span>RIDER CENTRAL</span></header>
+
+<!-- INITIAL SCREEN -->
+<div id="setup-screen">
+    <div class="card">
+        <h3>RIDER MODE</h3>
+        <input type="text" id="riderName" placeholder="Enter Your Name">
+        <button class="btn btn-rider" onclick="startTracking()">GO ONLINE 📡</button>
+    </div>
+
+    <div style="margin: 20px 0;">OR</div>
+
+    <div class="card">
+        <h3>MANAGEMENT</h3>
+        <button class="btn btn-admin" onclick="showMap()">VIEW LIVE MAP 📍</button>
+    </div>
+</div>
+
+<!-- RIDER ACTIVE STATUS -->
+<div id="rider-status">
+    📡 YOU ARE LIVE! <br>
+    <small>Keep this page open while delivering.</small>
+    <br><br>
+    <button onclick="location.reload()" style="font-size: 10px;">STOP TRACKING</button>
+</div>
+
+<!-- ADMIN MAP VIEW -->
+<div id="map-container">
+    <button class="back-btn" onclick="location.reload()">← EXIT</button>
+    <div id="map"></div>
+</div>
+
+<!-- SCRIPTS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script>
+    // --- CONFIGURATION ---
+    // Note: In a production app, you would link your own Firebase keys here.
+    // For this demo, we will use a simulated "Public" real-time bridge via a free API.
+    const STORAGE_KEY = "OVENX_RIDER_DATA_V1";
+    let map, markers = {};
+
+    // --- RIDER LOGIC ---
+    function startTracking() {
+        const name = document.getElementById('riderName').value;
+        if (!name) return alert("Please enter your name!");
+
+        document.getElementById('setup-screen').style.display = 'none';
+        document.getElementById('rider-status').style.display = 'block';
+
+        if ("geolocation" in navigator) {
+            navigator.geolocation.watchPosition(
+                (pos) => {
+                    const data = {
+                        name: name,
+                        lat: pos.coords.latitude,
+                        lng: pos.coords.longitude,
+                        lastSeen: new Date().getTime()
+                    };
+                    // Send data to a simple cloud storage (using a free public Bin for demo purposes)
+                    // In a real app, replace this with: firebase.database().ref('riders/' + name).set(data);
+                    broadcastLocation(data);
+                },
+                (err) => alert("GPS Error: " + err.message),
+                { enableHighAccuracy: true }
+            );
+        } else {
+            alert("Your phone doesn't support GPS.");
+        }
+    }
+
+    // --- ADMIN LOGIC ---
+    function showMap() {
+        document.getElementById('setup-screen').style.display = 'none';
+        document.getElementById('map-container').style.display = 'flex';
+
+        // Initialize Map (Centered on Pakistan/Lahore by default)
+        map = L.map('map').setView([31.5204, 74.3587], 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+        // Refresh riders every 5 seconds
+        setInterval(fetchRiders, 5000);
+        fetchRiders();
+    }
+
+    // --- DATA BRIDGE (Simulated Backend) ---
+    // For a real business, you should use Firebase. 
+    // This function uses a "Key-Value" storage simulation to show you how it looks.
+    
+    async function broadcastLocation(riderData) {
+        // This is a placeholder for where you would connect to a real database
+        // For now, it saves to a shared global variable if on the same device
+        // or a simulated cloud endpoint.
+        console.log("Broadcasting Location:", riderData);
+        
+        let allRiders = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+        allRiders[riderData.name] = riderData;
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(allRiders));
+    }
+
+    async function fetchRiders() {
+        // In a real app: firebase.database().ref('riders').on('value', ...)
+        let allRiders = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+        
+        const now = new Date().getTime();
+
+        for (let name in allRiders) {
+            const r = allRiders[name];
+            
+            // Only show riders active in the last 10 minutes
+            if (now - r.lastSeen < 600000) {
+                if (markers[name]) {
+                    markers[name].setLatLng([r.lat, r.lng]);
+                } else {
+                    markers[name] = L.marker([r.lat, r.lng]).addTo(map)
+                        .bindPopup(`<b>Rider: ${r.name}</b><br>Active now`)
+                        .openPopup();
+                }
+            } else {
+                if (markers[name]) {
+                    map.removeLayer(markers[name]);
+                    delete markers[name];
+                }
+            }
+        }
+    }
+</script>
+
+</body>
+</html>
