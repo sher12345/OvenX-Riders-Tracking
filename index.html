@@ -5,235 +5,149 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Oven X Command & Dispatch</title>
     
-    <!-- PWA Manifest for App Install -->
-    <link rel="manifest" href="data:application/manifest+json,{"name":"OvenX Tracker","short_name":"OvenX","start_url":".","display":"standalone","background_color":"#8b0000","theme_color":"#8b0000"}">
-    
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <style>
         :root { --red: #8b0000; --orange: #f37021; --white: #ffffff; }
         body, html { margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; height: 100%; width: 100%; background: #f0f0f0; overflow: hidden; }
+        header { background: var(--red); color: white; padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 4px solid var(--orange); z-index: 5000; }
+
+        #admin-panel, #rider-app { display: none; height: calc(100vh - 55px); width: 100%; position: relative; }
         
-        header { 
-            background: var(--red); color: white; padding: 12px 20px; 
-            display: flex; justify-content: space-between; align-items: center;
-            border-bottom: 4px solid var(--orange); z-index: 5000;
-        }
-
-        /* --- ADMIN PANEL (PC) --- */
-        #admin-panel { display: none; height: calc(100vh - 50px); position: relative; width: 100%; }
-        #map { height: 100%; width: 100%; z-index: 1; }
-        #sidebar {
-            position: absolute; top: 15px; left: 15px; width: 280px; 
-            max-height: 80%; background: rgba(255, 255, 255, 0.95); z-index: 1000;
-            border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-            padding: 15px; overflow-y: auto; border: 2px solid var(--orange);
-        }
-        .rider-card {
-            background: white; padding: 12px; border-radius: 12px; margin-bottom: 10px;
-            border-left: 6px solid var(--orange); box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        }
-        .rider-card b { color: var(--red); text-transform: uppercase; font-size: 14px; }
-        .rider-card p { margin: 4px 0; font-size: 11px; font-weight: bold; color: #555; }
-
-        /* --- RIDER APP (PHONE) --- */
-        #rider-app { display: none; height: 100vh; padding: 20px; box-sizing: border-box; text-align: center; background: var(--white); }
-        .app-card { background: #fff; padding: 30px 20px; border-radius: 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); border: 1px solid #eee; margin-top: 20px; }
-        .btn-main { background: var(--orange); color: white; padding: 20px; border-radius: 50px; border: none; font-weight: 900; width: 100%; cursor: pointer; font-size: 18px; box-shadow: 0 6px 0 #b34e12; margin-top: 20px; }
-        .status-indicator { display: inline-block; padding: 8px 20px; border-radius: 20px; font-weight: 900; font-size: 12px; margin-top: 10px; }
-        .status-online { background: #e8f5e9; color: #2e7d32; border: 1px solid #2e7d32; }
+        /* Rider App UI */
+        #rider-app { background: white; padding: 20px; box-sizing: border-box; text-align: center; overflow-y: auto; display: none; }
+        .card { background: #fff; padding: 25px; border-radius: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); border: 1px solid #eee; margin-bottom: 20px; }
+        .btn-main { background: var(--orange); color: white; padding: 18px; border-radius: 50px; border: none; font-weight: 900; width: 100%; cursor: pointer; font-size: 16px; box-shadow: 0 5px 0 #b34e12; margin-top: 15px; }
+        .btn-check { background: #444; color: white; padding: 12px; border-radius: 10px; border: none; width: 100%; margin-top: 10px; font-weight: bold; font-size: 12px; }
         
-        .map-controls { position: absolute; bottom: 30px; right: 20px; z-index: 1000; display: flex; flex-direction: column; gap: 10px; }
-        .ctrl-btn { width: 55px; height: 55px; border-radius: 15px; background: white; border: 2px solid var(--orange); box-shadow: 0 5px 15px rgba(0,0,0,0.2); font-size: 24px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        #sig-count { font-size: 40px; color: var(--orange); font-weight: 900; margin: 10px 0; }
+        #error-msg { background: #ffebee; color: #c62828; padding: 10px; border-radius: 10px; font-size: 12px; margin-top: 15px; display: none; border: 1px solid #ef9a9a; }
 
-        #keepAliveAudio { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+        /* Admin Map UI */
+        #map { height: 100%; width: 100%; }
+        #sidebar { position: absolute; top: 10px; left: 10px; width: 240px; max-height: 60%; background: rgba(255,255,255,0.9); z-index: 1000; border-radius: 15px; padding: 10px; border: 1px solid var(--orange); overflow-y: auto; }
+        .map-tools { position: absolute; bottom: 30px; right: 20px; z-index: 1000; display: flex; flex-direction: column; gap: 10px; }
+        .tool-btn { width: 50px; height: 50px; border-radius: 12px; background: white; border: 1px solid var(--orange); font-size: 20px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
     </style>
 </head>
 <body>
 
-<div id="main-container" style="height: 100vh; display: flex; flex-direction: column;">
-    <!-- Shared Header -->
+<div id="main-wrapper" style="height:100vh; display:flex; flex-direction:column;">
     <header>
         <h1 style="margin:0; font-size: 18px;">OVEN <span style="color:var(--orange)">X</span> HQ</h1>
-        <div id="live-indicator" style="font-size: 11px; font-weight: 900; background: rgba(0,0,0,0.2); padding: 5px 12px; border-radius: 20px;">SYSTEM READY</div>
+        <div id="active-count" style="font-size:11px; font-weight:900;">SYSTEM ACTIVE</div>
     </header>
 
-    <!-- RIDER VIEW (Mobile) -->
+    <!-- RIDER VIEW -->
     <div id="rider-app">
-        <div class="app-card" id="rider-login">
-            <img src="https://cdn-icons-png.flaticon.com/512/2972/2972185.png" width="80">
-            <h2 style="color:var(--red)">Rider Dispatch</h2>
-            <p style="color:#777; font-size: 13px;">Shift Active Until 02:00 AM</p>
-            <input type="text" id="riderName" placeholder="Enter Full Name" style="width:100%; padding:15px; border-radius:10px; border:1px solid #ddd; text-align:center; font-size: 18px;">
-            <button class="btn-main" onclick="startShift()">START MY SHIFT</button>
+        <div class="card" id="login-screen">
+            <h2 style="color:var(--red); margin:0;">Rider Dispatch</h2>
+            <p style="color:#777; font-size:13px;">Gulgasht Block A HQ</p>
+            <input type="text" id="riderName" placeholder="Full Name" style="width:100%; padding:15px; border-radius:10px; border:1px solid #ddd; text-align:center; font-size:18px;">
+            <button class="btn-check" onclick="requestPermission()">STEP 1: ENABLE GPS</button>
+            <button class="btn-main" onclick="startShift()">STEP 2: START SHIFT</button>
+            <div id="error-msg"></div>
         </div>
 
-        <div class="app-card" id="rider-active" style="display:none;">
-            <div class="status-indicator status-online">● TRACKING IS LIVE</div>
-            <h2 id="hello-rider" style="color:var(--red); margin: 15px 0 5px 0;"></h2>
-            <p style="font-size: 12px; color: #666;">Signals Sent: <b id="sig-count" style="color:var(--orange)">0</b></p>
-            <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
-            <p style="text-align: left; font-size: 13px; color: #444;">
-                🚩 <b>Keep this app open.</b><br>
-                🚩 <b>You can turn off the screen.</b><br>
-                🚩 <b>Battery Optimization must be OFF.</b>
-            </p>
-            <button onclick="location.reload()" style="background:none; border:none; color:#999; text-decoration:underline; margin-top: 15px;">End Session</button>
+        <div class="card" id="active-screen" style="display:none;">
+            <h2 id="display-name" style="color:var(--red); margin:0;"></h2>
+            <div style="color:#2e7d32; font-weight:bold; margin:10px 0;">● TRACKING ACTIVE</div>
+            <div id="sig-count">0</div>
+            <p style="margin:0; font-size:12px; color:#999;">Signals Sent to HQ</p>
+            <button onclick="localStorage.clear(); location.reload();" style="margin-top:20px; background:none; border:none; color:#bbb; text-decoration:underline;">Logout</button>
         </div>
     </div>
 
-    <!-- ADMIN VIEW (PC) -->
+    <!-- ADMIN VIEW -->
     <div id="admin-panel">
         <div id="sidebar">
-            <h3 style="margin-top:0; font-size: 16px; border-bottom: 3px solid var(--orange); padding-bottom: 8px; color: var(--red);">LIVE FLEET</h3>
-            <div id="fleet-list">
-                <p style="font-size: 11px; color: #999;">Waiting for rider connections...</p>
-            </div>
+            <h4 style="margin:0 0 10px 0; border-bottom:1px solid #ddd;">LIVE RIDERS</h4>
+            <div id="rider-list"></div>
         </div>
         <div id="map"></div>
-        <div class="map-controls">
-            <button class="ctrl-btn" onclick="focusShop()">🏠</button>
-            <button class="ctrl-btn" onclick="focusAll()">🚴</button>
+        <div class="map-tools">
+            <button class="tool-btn" onclick="map.flyTo([30.216962, 71.470274], 18)">🏠</button>
         </div>
     </div>
 </div>
 
-<!-- Silent Hack Audio -->
-<audio id="stayAliveAudio" loop playsinline>
-    <source src="data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAAAA== " type="audio/wav">
-</audio>
+<audio id="stayAlive" loop playsinline><source src="data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAAAA== " type="audio/wav"></audio>
 
 <script>
-    // --- SETTINGS ---
-    const SHOP_POS = [30.216962, 71.470274]; 
-    const CHANNEL = 'ovenx_hq_dispatch_2026';
-    
-    let map, markers = {}, fleet = {}, sigs = 0;
+    const SHOP = [30.216962, 71.470274];
+    const TOPIC = 'ovenx_hq_dispatch_2026';
+    let map, markers = {}, fleet = {}, count = 0;
 
-    // --- AUTO DETECT PC VS PHONE ---
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
 
-    window.onload = function() {
+    window.onload = () => {
         if (!isMobile) {
-            // SHOW ADMIN PANEL
             document.getElementById('admin-panel').style.display = 'block';
-            initAdminMap();
+            initMap();
         } else {
-            // SHOW RIDER APP
             document.getElementById('rider-app').style.display = 'block';
-            // Auto-resume if already logged in
             if(localStorage.getItem('ovenx_rider')) {
-                const n = localStorage.getItem('ovenx_rider');
-                document.getElementById('riderName').value = n;
-                document.getElementById('rider-login').innerHTML = `<h2 style="color:var(--red)">Welcome Back!</h2><button class="btn-main" onclick="startShift()">RESUME SHIFT</button>`;
+                document.getElementById('riderName').value = localStorage.getItem('ovenx_rider');
             }
         }
     };
 
-    // --- RIDER APP LOGIC ---
+    // Forces the phone to show the GPS prompt
+    function requestPermission() {
+        navigator.geolocation.getCurrentPosition(
+            () => { alert("✅ GPS Access Granted!"); document.getElementById('error-msg').style.display='none'; },
+            (err) => { 
+                document.getElementById('error-msg').innerText = "❌ GPS Error: Please go to App Settings and allow Location.";
+                document.getElementById('error-msg').style.display = 'block';
+            },
+            { enableHighAccuracy: true }
+        );
+    }
+
     async function startShift() {
         const name = document.getElementById('riderName').value.trim();
-        if(!name) return alert("Please enter name!");
+        if(!name) return alert("Enter Name");
+        
         localStorage.setItem('ovenx_rider', name);
+        document.getElementById('stayAlive').play();
 
-        // Play silent sound to prevent Android CPU sleep
-        const audio = document.getElementById('stayAliveAudio');
-        audio.play();
+        document.getElementById('login-screen').style.display = 'none';
+        document.getElementById('active-screen').style.display = 'block';
+        document.getElementById('display-name').innerText = name.toUpperCase();
 
-        // Lockscreen status persistence
-        if ('mediaSession' in navigator) {
-            navigator.mediaSession.metadata = new MediaMetadata({
-                title: 'OVEN X: Shift in Progress',
-                artist: name,
-                album: 'Gulgasht Branch'
-            });
-        }
-
-        // CPU WakeLock
-        if ('wakeLock' in navigator) { try { await navigator.wakeLock.request('screen'); } catch(e){} }
-
-        document.getElementById('rider-login').style.display = 'none';
-        document.getElementById('rider-active').style.display = 'block';
-        document.getElementById('hello-rider').innerText = name.toUpperCase();
-
-        const sessionStart = Date.now();
-
-        // High Accuracy Watcher
+        const start = Date.now();
+        
         navigator.geolocation.watchPosition((pos) => {
-            const data = {
-                n: name, lt: pos.coords.latitude, lg: pos.coords.longitude,
-                s: pos.coords.speed ? Math.round(pos.coords.speed * 3.6) : 0,
-                start: sessionStart, now: Date.now()
-            };
-            
-            fetch(`https://ntfy.sh/${CHANNEL}`, { method: 'POST', body: JSON.stringify(data) });
-            sigs++;
-            document.getElementById('sig-count').innerText = sigs;
+            const data = { n: name, lt: pos.coords.latitude, lg: pos.coords.longitude, s: Math.round((pos.coords.speed || 0) * 3.6), start: start };
+            fetch(`https://ntfy.sh/${TOPIC}`, { method: 'POST', body: JSON.stringify(data) })
+            .then(() => { count++; document.getElementById('sig-count').innerText = count; });
         }, (err) => {
             console.log(err);
         }, { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 });
-
-        // Force browser to refresh location every 15 seconds
-        setInterval(() => {
-            navigator.geolocation.getCurrentPosition(()=>{});
-        }, 15000);
     }
 
-    // --- ADMIN MAP LOGIC ---
-    function initAdminMap() {
-        setTimeout(() => {
-            map = L.map('map', { zoomControl: false }).setView(SHOP_POS, 17);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-            L.marker(SHOP_POS).addTo(map).bindTooltip("OVEN X HQ", { permanent: true, direction: 'bottom' });
-            
-            // Fix white map issue
-            setTimeout(() => { map.invalidateSize(); }, 800);
-
-            // Start Listening
-            const source = new EventSource(`https://ntfy.sh/${CHANNEL}/sse`);
-            source.onmessage = (e) => {
-                try {
-                    const data = JSON.parse(JSON.parse(e.data).message);
-                    fleet[data.n] = data;
-                    updateMap(data);
-                } catch(err) {}
-            };
-        }, 300);
-    }
-
-    function updateMap(data) {
-        const pos = [data.lt, data.lg];
-        const mins = Math.floor((Date.now() - data.start) / 60000);
-        const label = `<b>${data.n}</b><br>${mins}m out | ${data.s} km/h`;
-
-        if (markers[data.n]) {
-            markers[data.n].setLatLng(pos).setTooltipContent(label);
-        } else {
-            markers[data.n] = L.marker(pos).addTo(map).bindTooltip(label, { permanent: true, direction: 'top' });
-        }
+    function initMap() {
+        map = L.map('map', { zoomControl: false }).setView(SHOP, 17);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+        L.marker(SHOP).addTo(map).bindTooltip("HQ");
         
-        // Update Sidebar
-        const log = document.getElementById('fleet-list');
-        log.innerHTML = '';
-        Object.keys(fleet).forEach(n => {
-            const r = fleet[n];
-            const div = document.createElement('div');
-            div.className = 'rider-card';
-            div.innerHTML = `<b>${r.n}</b><p>${Math.floor((Date.now()-r.start)/60000)}m out | ${r.s} km/h</p><button onclick="focusRider('${r.n}')" style="width:100%; border:none; background:var(--orange); color:white; border-radius:5px; padding:5px; cursor:pointer; font-weight:bold; font-size:10px;">LOCATE</button>`;
-            log.appendChild(div);
-        });
-        document.getElementById('live-indicator').innerText = `${Object.keys(fleet).length} RIDERS ACTIVE`;
-    }
-
-    window.focusRider = (name) => {
-        const r = fleet[name];
-        if(r) map.flyTo([r.lt, r.lg], 18);
-    };
-    function focusShop() { map.flyTo(SHOP_POS, 18); }
-    function focusAll() {
-        const group = new L.featureGroup(Object.values(markers));
-        if (group.getLayers().length > 0) map.fitBounds(group.getBounds().pad(0.4));
+        const source = new EventSource(`https://ntfy.sh/${TOPIC}/sse`);
+        source.onmessage = (e) => {
+            const d = JSON.parse(JSON.parse(e.data).message);
+            fleet[d.n] = d;
+            const label = `<b>${d.n}</b><br>${d.s} km/h`;
+            if (markers[d.n]) markers[d.n].setLatLng([d.lt, d.lg]).setTooltipContent(label);
+            else markers[d.n] = L.marker([d.lt, d.lg]).addTo(map).bindTooltip(label, { permanent: true });
+            
+            const list = document.getElementById('rider-list');
+            list.innerHTML = '';
+            Object.keys(fleet).forEach(name => {
+                const div = document.createElement('div');
+                div.innerHTML = `<div style="padding:5px; border-bottom:1px solid #eee;"><b>${name}</b><br><small>${fleet[name].s} km/h</small></div>`;
+                list.appendChild(div);
+            });
+        };
     }
 </script>
 </body>
