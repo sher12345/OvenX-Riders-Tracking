@@ -14,32 +14,33 @@
         #wrapper { display: flex; flex-direction: column; height: 100vh; width: 100vw; }
         header { background: var(--red); color: white; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 4px solid var(--orange); z-index: 5000; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
         
-        /* Admin Map View */
+        /* Admin View */
         #admin-view { position: relative; flex: 1; width: 100%; height: 100%; display: none; }
         #map { position: absolute; top: 0; bottom: 0; width: 100%; height: 100%; z-index: 1; background: #ddd; }
         #sidebar { position: absolute; top: 15px; left: 15px; width: 260px; max-height: 70%; background: rgba(255, 255, 255, 0.95); z-index: 1000; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); padding: 15px; overflow-y: auto; border: 2px solid var(--orange); backdrop-filter: blur(8px); }
         .rider-list-item { background: white; padding: 12px; border-radius: 15px; margin-bottom: 10px; border-left: 6px solid var(--orange); box-shadow: 0 3px 6px rgba(0,0,0,0.05); }
         .rider-list-item b { color: var(--red); font-size: 15px; display: block; text-transform: uppercase; }
-        .locate-btn { background: var(--orange); color: white; border: none; padding: 8px; width: 100%; border-radius: 10px; cursor: pointer; font-weight: 900; margin-top: 5px; font-size: 10px; }
 
         /* Rider UI */
         #rider-view { flex: 1; display: none; padding: 20px; text-align: center; overflow-y: auto; }
-        .setup-guide { background: #fff3cd; color: #856404; padding: 15px; border-radius: 15px; text-align: left; font-size: 13px; margin-bottom: 20px; border: 1px solid #ffeeba; line-height: 1.5; }
+        .tecno-warning { background: #ffdede; color: #8b0000; padding: 15px; border-radius: 15px; text-align: left; font-size: 12px; margin-bottom: 20px; border: 2px solid var(--red); font-weight: bold; }
         .login-card { background: white; padding: 30px 25px; border-radius: 35px; box-shadow: 0 15px 40px rgba(0,0,0,0.1); max-width: 400px; margin: auto; }
         input { width: 100%; padding: 18px; border-radius: 15px; border: 2px solid #eee; margin-bottom: 20px; font-size: 18px; box-sizing: border-box; text-align: center; }
         .btn-online { background: var(--orange); color: white; padding: 20px; border-radius: 50px; border: none; font-weight: 900; width: 100%; cursor: pointer; font-size: 18px; box-shadow: 0 6px 0 #b34e12; }
         
         #active-info { display: none; }
-        .live-pulse { width: 15px; height: 15px; background: #2ecc71; border-radius: 50%; display: inline-block; margin-right: 10px; box-shadow: 0 0 10px #2ecc71; animation: pulse 1.5s infinite; }
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
+        .status-box { background: #f8f9fa; border-radius: 20px; padding: 15px; margin-top: 20px; text-align: left; border: 1px solid #ddd; }
+        .status-item { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 13px; font-weight: bold; }
+        .stat-ok { color: #2ecc71; }
+        .stat-err { color: #e74c3c; }
 
         .map-tools { position: absolute; bottom: 30px; right: 20px; z-index: 1000; display: flex; flex-direction: column; gap: 12px; }
         .tool-btn { width: 55px; height: 55px; border-radius: 15px; background: white; border: 2px solid var(--orange); box-shadow: 0 5px 15px rgba(0,0,0,0.2); cursor: pointer; font-size: 24px; display: flex; align-items: center; justify-content: center; }
         
         .shop-tooltip { background: var(--red); color: white; padding: 5px 12px; border-radius: 5px; font-weight: 900; border: 2px solid var(--orange); font-size: 12px; }
         .rider-tooltip { background: var(--orange); color: white; border: 2px solid white; border-radius: 8px; padding: 5px 10px; font-weight: bold; text-align: center; }
-
-        .leaflet-marker-icon { transition: transform 0.8s linear !important; }
+        
+        #keepAliveVideo { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
     </style>
 </head>
 <body>
@@ -65,16 +66,16 @@
 
     <!-- RIDER VIEW -->
     <div id="rider-view">
-        <div class="setup-guide" id="setup-guide">
-            <b>⚠️ FIX FOR DISCONNECTS:</b><br>
-            1. Long press <b>Chrome</b> > App Info.<br>
-            2. <b>Battery</b> > Select <b>"Unrestricted"</b>.<br>
-            3. Turn <b>OFF</b> "Power Saving Mode" on phone.
+        <div class="tecno-warning">
+            ⚠️ <b>TECNO SPARK SPECIAL SETUP:</b><br>
+            1. Open <b>"Phone Master"</b> App > Toolbox > <b>Auto-start management</b> > Turn ON Chrome.<br>
+            2. App Info > Battery > <b>Unrestricted</b>.<br>
+            3. Turn <b>OFF</b> Power Marathon / Ultra Power Saving.
         </div>
 
         <div class="login-card" id="login-card">
             <h2 style="color:var(--red); margin:0;">Rider Login</h2>
-            <p style="color:#666; margin-bottom:20px; font-size: 14px;">Shift End: 02:00 AM</p>
+            <p style="color:#666; margin-bottom:20px; font-size: 14px;">Shift HQ: Block A, Gulgasht</p>
             <input type="text" id="riderName" placeholder="Enter Full Name">
             <button class="btn-online" onclick="startRider()">START MY SHIFT</button>
         </div>
@@ -82,23 +83,18 @@
         <div id="active-info">
             <div class="login-card">
                 <h2 id="hello-user" style="color:var(--red); margin:0;"></h2>
-                <div style="margin: 20px 0;">
-                    <span class="live-pulse"></span>
-                    <b style="color:#2e7d32; font-size: 18px;">LOCATION IS LIVE</b>
+                <div class="status-box">
+                    <div class="status-item">GPS Status: <span id="gps-stat" class="stat-err">Waiting...</span></div>
+                    <div class="status-item">Last Signal: <span id="last-sig" class="stat-err">Never</span></div>
+                    <div class="status-item">Signals Sent: <span id="sig-count">0</span></div>
                 </div>
-                <p style="background: #f8f9fa; padding: 15px; border-radius: 15px; font-size: 13px; color: #555; text-align: left;">
-                    ✅ Always-On Tracking Enabled.<br>
-                    ✅ Screen can be turned off.<br>
-                    ❌ <b>Do not close Chrome app.</b><br>
-                    ❌ <b>Do not swipe away this tab.</b>
-                </p>
+                <p style="font-size: 12px; color: #777; margin-top: 15px;">Keep Chrome open in background. If signals stop, click Resume.</p>
                 <button onclick="stopShift()" style="margin-top:20px; background:none; border:none; color:#999; text-decoration:underline; font-size: 12px;">End Shift Early</button>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Super-Stay-Alive Audio Hack (Built-in Base64 Silence) -->
 <audio id="stayAliveAudio" loop playsinline>
     <source src="data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAAAA== " type="audio/wav">
 </audio>
@@ -106,10 +102,9 @@
 <script>
     const SHOP_POS = [30.216949, 71.470271]; 
     const CHANNEL_ID = 'ovenx_gulgasht_hq_secure_2026'; 
-    
     const params = new URLSearchParams(window.location.search);
     const isAdmin = params.get('admin') === 'true';
-    let map, markers = {}, fleetData = {}, wakeLock = null;
+    let map, markers = {}, fleetData = {}, signalCount = 0, watchID = null;
 
     window.onload = function() {
         if (isAdmin) {
@@ -123,12 +118,11 @@
     };
 
     function checkAutoResume() {
-        const savedSession = localStorage.getItem('ovenx_rider_session');
-        if (savedSession) {
-            const data = JSON.parse(savedSession);
+        const saved = localStorage.getItem('ovenx_rider_session');
+        if (saved) {
+            const data = JSON.parse(saved);
             document.getElementById('riderName').value = data.name;
-            // Add a small delay for user interaction to allow audio play
-            document.getElementById('login-card').innerHTML = `<h2 style="color:var(--red)">Welcome Back!</h2><p>Click to resume tracking</p><button class="btn-online" onclick="startRider(true, ${data.startTime})">RESUME TRACKING</button>`;
+            document.getElementById('login-card').innerHTML = `<h2 style="color:var(--red)">Session Active</h2><button class="btn-online" onclick="startRider(true, ${data.startTime})">RESUME TRACKING</button>`;
         }
     }
 
@@ -136,59 +130,55 @@
         const name = document.getElementById('riderName').value.trim();
         if(!name) return alert("Enter name!");
 
-        // Start Built-in Audio Loop (Tricks Android into keeping browser active)
-        const audio = document.getElementById('stayAliveAudio');
-        audio.play().catch(e => console.log("Audio Play Failed", e));
-
-        // Attempt WakeLock to keep CPU alive
-        if ('wakeLock' in navigator) {
-            try { wakeLock = await navigator.wakeLock.request('screen'); } catch(e){}
-        }
-
-        // Set Media Session Metadata so it shows on lock screen
-        if ('mediaSession' in navigator) {
-            navigator.mediaSession.metadata = new MediaMetadata({
-                title: 'Oven X: Tracking Active',
-                artist: name,
-                album: 'Gulgasht HQ'
-            });
-        }
+        document.getElementById('stayAliveAudio').play().catch(e => console.log("Audio Play Required Interaction"));
+        if ('wakeLock' in navigator) { try { await navigator.wakeLock.request('screen'); } catch(e){} }
 
         document.getElementById('login-card').style.display = 'none';
-        document.getElementById('setup-guide').style.display = 'none';
         document.getElementById('active-info').style.display = 'block';
         document.getElementById('hello-user').innerText = name;
 
         const startTime = resumedTime || Date.now();
         localStorage.setItem('ovenx_rider_session', JSON.stringify({name: name, startTime: startTime}));
 
-        // GPS Watcher with High Priority
-        navigator.geolocation.watchPosition((pos) => {
+        // CLEAR OLD WATCHER IF ANY
+        if (watchID) navigator.geolocation.clearWatch(watchID);
+
+        // FORCE GPS ACTIVE
+        watchID = navigator.geolocation.watchPosition((pos) => {
+            document.getElementById('gps-stat').innerText = "Active ✅";
+            document.getElementById('gps-stat').className = "stat-ok";
+            
             const out = {
                 n: name, lt: pos.coords.latitude, lg: pos.coords.longitude,
                 s: pos.coords.speed ? Math.round(pos.coords.speed * 3.6) : 0,
                 start: startTime, now: Date.now()
             };
+
             fetch(`https://ntfy.sh/${CHANNEL_ID}`, { method: 'POST', body: JSON.stringify(out) })
-            .catch(e => console.log("Network error, retrying..."));
+            .then(() => {
+                signalCount++;
+                document.getElementById('sig-count').innerText = signalCount;
+                document.getElementById('last-sig').innerText = new Date().toLocaleTimeString();
+                document.getElementById('last-sig').className = "stat-ok";
+            });
+
         }, (err) => {
-            console.error("GPS Error", err);
+            document.getElementById('gps-stat').innerText = "GPS Error ❌";
+            document.getElementById('gps-stat').className = "stat-err";
         }, { 
             enableHighAccuracy: true, 
             maximumAge: 0, 
-            timeout: 15000 
+            timeout: 10000 
         });
 
-        // Prevention against accidental close
-        window.onbeforeunload = () => "Tracking will stop!";
+        // HEARTBEAT HACK: If watchPosition stops, this forces a check every 20 seconds
+        setInterval(() => {
+            navigator.geolocation.getCurrentPosition(()=>{});
+        }, 20000);
     }
 
     function stopShift() {
-        if(confirm("End shift?")) { 
-            localStorage.removeItem('ovenx_rider_session');
-            window.onbeforeunload = null; 
-            location.reload(); 
-        }
+        if(confirm("End shift?")) { localStorage.removeItem('ovenx_rider_session'); location.reload(); }
     }
 
     // --- ADMIN LOGIC ---
@@ -229,15 +219,14 @@
     function refreshSidebar() {
         const log = document.getElementById('rider-log');
         log.innerHTML = '';
-        const names = Object.keys(fleetData);
-        document.getElementById('status-tag').innerText = `${names.length} ACTIVE`;
-        names.forEach(n => {
+        Object.keys(fleetData).forEach(n => {
             const r = fleetData[n];
             const div = document.createElement('div');
             div.className = 'rider-list-item';
             div.innerHTML = `<b>${r.n}</b><p>🕒 Out: ${Math.floor((Date.now()-r.start)/60000)}m</p><button class="locate-btn" onclick="focusRider('${r.n}')">LOCATE</button>`;
             log.appendChild(div);
         });
+        document.getElementById('status-tag').innerText = `${Object.keys(fleetData).length} ACTIVE`;
     }
 
     window.focusRider = (name) => {
