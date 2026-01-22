@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Oven X - Gulgasht HQ</title>
     
-    <!-- Leaflet Map Assets -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
@@ -31,7 +30,6 @@
             box-shadow: 0 4px 10px rgba(0,0,0,0.2);
         }
 
-        /* --- ADMIN SECTION --- */
         #admin-view { position: relative; flex: 1; width: 100%; height: 100%; display: none; }
         #map { position: absolute; top: 0; bottom: 0; width: 100%; height: 100%; z-index: 1; background: #ddd; }
 
@@ -52,19 +50,16 @@
         .rider-list-item p { margin: 3px 0; font-size: 11px; font-weight: bold; color: #555; }
         .locate-btn { background: var(--orange); color: white; border: none; padding: 8px; width: 100%; border-radius: 10px; cursor: pointer; font-weight: 900; margin-top: 5px; font-size: 10px; }
 
-        /* --- RIDER SECTION --- */
         #rider-view { flex: 1; display: none; padding: 40px 20px; text-align: center; overflow-y: auto; }
         .login-card { background: white; padding: 40px 25px; border-radius: 35px; box-shadow: 0 15px 40px rgba(0,0,0,0.1); max-width: 400px; margin: auto; }
         input { width: 100%; padding: 18px; border-radius: 15px; border: 2px solid #eee; margin-bottom: 25px; font-size: 18px; box-sizing: border-box; text-align: center; }
         .btn-online { background: var(--orange); color: white; padding: 20px; border-radius: 50px; border: none; font-weight: 900; width: 100%; cursor: pointer; font-size: 18px; box-shadow: 0 6px 0 #b34e12; }
 
-        /* --- MAP CONTROLS --- */
         .map-tools { position: absolute; bottom: 30px; right: 20px; z-index: 1000; display: flex; flex-direction: column; gap: 12px; }
         .tool-btn { width: 55px; height: 55px; border-radius: 15px; background: white; border: 2px solid var(--orange); box-shadow: 0 5px 15px rgba(0,0,0,0.2); cursor: pointer; font-size: 24px; display: flex; align-items: center; justify-content: center; }
 
-        /* MARKER STYLES */
-        .shop-tooltip { background: var(--orange); color: white; padding: 5px 12px; border-radius: 5px; font-weight: 900; border: 2px solid white; font-size: 11px; }
-        .rider-tooltip { background: var(--red); color: white; border: 2px solid var(--orange); border-radius: 8px; padding: 5px 10px; font-weight: bold; text-align: center; }
+        .shop-tooltip { background: var(--red); color: white; padding: 5px 12px; border-radius: 5px; font-weight: 900; border: 2px solid var(--orange); font-size: 12px; }
+        .rider-tooltip { background: var(--orange); color: white; border: 2px solid white; border-radius: 8px; padding: 5px 10px; font-weight: bold; text-align: center; }
 
         #keepAliveVideo { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
     </style>
@@ -77,48 +72,41 @@
         <div id="status-tag" style="background:rgba(255,255,255,0.2); padding: 5px 12px; border-radius: 20px; font-size: 11px; font-weight: 900; display:none;">0 ACTIVE</div>
     </header>
 
-    <!-- ADMIN MAP VIEW -->
     <div id="admin-view">
         <div id="sidebar">
             <h3 style="margin-top:0; font-size: 16px; border-bottom: 3px solid var(--orange); padding-bottom: 8px; color: var(--red);">LIVE RIDERS</h3>
-            <div id="rider-log">
-                <p style="font-size: 11px; color: #999;">Waiting for rider connections...</p>
-            </div>
+            <div id="rider-log"><p style="font-size: 11px; color: #999;">Waiting for connection...</p></div>
         </div>
-
         <div id="map"></div>
-
         <div class="map-tools">
             <button class="tool-btn" onclick="focusShop()" title="Shop Location">🏠</button>
             <button class="tool-btn" onclick="focusAllRiders()" title="See Everyone">🚴</button>
         </div>
     </div>
 
-    <!-- RIDER LOGIN VIEW -->
     <div id="rider-view">
         <div class="login-card">
             <h2 style="color:var(--red); margin-top:0;">Rider Portal</h2>
-            <p style="color:#666; margin-bottom:30px;">Turn on GPS and enter your name.</p>
+            <p style="color:#666; margin-bottom:30px;">Block A, Gulgasht Colony HQ</p>
             <input type="text" id="riderName" placeholder="Enter Name">
             <button class="btn-online" onclick="startRider()">START DELIVERY</button>
         </div>
         <div id="active-info" style="display:none; margin-top: 30px;">
             <h2 id="hello-user" style="color:var(--red);"></h2>
             <div style="background:#e8f5e9; color:#2e7d32; padding:20px; border-radius:25px; font-weight:bold; border:1px solid #c8e6c9;">
-                📡 SIGNAL BROADCASTING<br><small>You can turn off your screen now.</small>
+                📡 SIGNAL BROADCASTING<br><small>Location is live from Gulgasht Block A</small>
             </div>
             <button onclick="location.reload()" style="margin-top:20px; background:none; border:none; color:#999; text-decoration:underline; cursor:pointer;">Stop Tracking</button>
         </div>
     </div>
 </div>
 
-<!-- Background Task Hack -->
 <video id="keepAliveVideo" playsinline muted loop><source src="https://raw.githubusercontent.com/anars/blank-audio/master/250-milliseconds-of-silence.mp3"></video>
 
 <script>
-    // --- EXACT COORDINATES PROVIDED ---
-    const SHOP_POS = [30.216962403725795, 71.4702745936801]; 
-    const CHANNEL_ID = 'ovenx_gulgasht_hq_secure_2026'; // Secret link id
+    // --- UPDATED ACCURATE COORDINATES FOR BLOCK A ---
+    const SHOP_POS = [30.216949, 71.470271]; 
+    const CHANNEL_ID = 'ovenx_gulgasht_hq_secure_2026'; 
     
     const params = new URLSearchParams(window.location.search);
     const isAdmin = params.get('admin') === 'true';
@@ -135,48 +123,37 @@
         }
     };
 
-    // --- RIDER CODE ---
     async function startRider() {
         const name = document.getElementById('riderName').value.trim();
         if(!name) return alert("Enter name!");
-
         document.getElementById('keepAliveVideo').play();
         if ('wakeLock' in navigator) { try { await navigator.wakeLock.request('screen'); } catch(e){} }
-
         document.querySelector('.login-card').style.display = 'none';
         document.getElementById('active-info').style.display = 'block';
         document.getElementById('hello-user').innerText = "Rider: " + name;
-
         const startTime = Date.now();
 
         navigator.geolocation.watchPosition((pos) => {
             const out = {
-                n: name,
-                lt: pos.coords.latitude,
-                lg: pos.coords.longitude,
+                n: name, lt: pos.coords.latitude, lg: pos.coords.longitude,
                 s: pos.coords.speed ? Math.round(pos.coords.speed * 3.6) : 0,
-                start: startTime,
-                now: Date.now()
+                start: startTime, now: Date.now()
             };
             fetch(`https://ntfy.sh/${CHANNEL_ID}`, { method: 'POST', body: JSON.stringify(out) });
         }, null, { enableHighAccuracy: true });
     }
 
-    // --- ADMIN CODE ---
     function initMap() {
-        // Delayed init to prevent white screen bug
         setTimeout(() => {
-            map = L.map('map', { zoomControl: false }).setView(SHOP_POS, 16);
+            // Increased initial zoom to 18 to focus on the building
+            map = L.map('map', { zoomControl: false }).setView(SHOP_POS, 18);
             
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
-            // HQ Marker
             L.marker(SHOP_POS).addTo(map)
-                .bindTooltip("OVEN X BRANCH", { permanent: true, direction: 'bottom', className: 'shop-tooltip' });
+                .bindTooltip("OVEN X HQ - BLOCK A", { permanent: true, direction: 'bottom', className: 'shop-tooltip' });
 
-            // Fix for map size
             setTimeout(() => { map.invalidateSize(); }, 600);
-
             startSSE();
         }, 200);
     }
@@ -204,7 +181,6 @@
             markers[data.n] = L.marker(coords).addTo(map)
                 .bindTooltip(label, { permanent: true, direction: 'top', className: 'rider-tooltip' });
         }
-
         refreshSidebar();
     }
 
@@ -213,18 +189,12 @@
         log.innerHTML = '';
         const names = Object.keys(fleetData);
         document.getElementById('status-tag').innerText = `${names.length} ACTIVE`;
-
         names.forEach(n => {
             const r = fleetData[n];
             const duration = Math.floor((Date.now() - r.start) / 60000);
             const div = document.createElement('div');
             div.className = 'rider-list-item';
-            div.innerHTML = `
-                <b>${r.n}</b>
-                <p>🕒 Time: ${duration} mins out</p>
-                <p>🚀 Speed: ${r.s} km/h</p>
-                <button class="locate-btn" onclick="focusRider('${r.n}')">LOCATE</button>
-            `;
+            div.innerHTML = `<b>${r.n}</b><p>🕒 Time: ${duration}m</p><p>🚀 Speed: ${r.s}km/h</p><button class="locate-btn" onclick="focusRider('${r.n}')">LOCATE</button>`;
             log.appendChild(div);
         });
     }
@@ -234,12 +204,11 @@
         if(r) map.flyTo([r.lt, r.lg], 18);
     };
 
-    function focusShop() { map.flyTo(SHOP_POS, 17); }
+    function focusShop() { map.flyTo(SHOP_POS, 18); }
     function focusAllRiders() {
         const group = new L.featureGroup(Object.values(markers));
         if (group.getLayers().length > 0) map.fitBounds(group.getBounds().pad(0.4));
     }
 </script>
-
 </body>
 </html>
