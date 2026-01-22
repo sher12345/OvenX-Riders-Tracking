@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Oven X - Always-On Tracker</title>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <style>
+        :root { --red: #8b0000; --orange: #f37021; --bg: #fff9f5; }
+        body, html { margin: 0; padding: 0; font-family: sans-serif; height: 100%; background: var(--bg); }
+        header { background: var(--red); color: white; padding: 15px; text-align: center; font-weight: 900; border-bottom: 5px solid var(--orange); }
+        .card { background: white; margin: 15px; padding: 25px; border-radius: 25px; box-shadow: 0 10px 20px rgba(0,0,0,0.1); text-align: center; }
+        input { width: 85%; padding: 15px; border-radius: 15px; border: 2px solid #ddd; margin-bottom: 20px; font-size: 16px; }
+        .btn { background: var(--orange); color: white; padding: 18px; border-radius: 50px; border: none; font-weight: 900; width: 100%; cursor: pointer; box-shadow: 0 5px 0 #b34e12; text-transform: uppercase; }
+        #status-bar { background: #25D366; color: white; padding: 10px; font-size: 12px; text-align: center; font-weight: bold; display: none; }
+        #map { height: calc(100% - 60px); width: 100%; display: none; }
+        .warning-box { background: #fff3cd; color: #856404; padding: 15px; border-radius: 15px; font-size: 13px; text-align: left; margin-bottom: 15px; border: 1px solid #ffeeba; }
+        /* Hide the hack video */
+        #keepAliveVideo { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+    </style>
+</head>
+<body>
+
+<header id="main-header">OVEN X <span>TRACKER</span></header>
+<div id="status-bar">📡 TRACKING ACTIVE (SCREEN OFF OK)</div>
+
+<!-- RIDER VIEW -->
+<div id="rider-view">
+    <div class="card" id="setup-box">
+        <div class="warning-box">
+            <b>⚠️ ANDROID SETUP:</b><br>
+            For tracking to work with screen off:<br>
+            1. Long press Chrome icon > <b>App Info</b><br>
+            2. Go to <b>Battery</b><br>
+            3. Select <b>"Unrestricted"</b>
+        </div>
+        <h3>RIDER LOGIN</h3>
+        <input type="text" id="riderName" placeholder="Enter Your Name">
+        <button class="btn" onclick="startRider()">Start Delivery</button>
+    </div>
+
+    <div class="card" id="active-box" style="display:none;">
+        <h2 id="hello-name"></h2>
+        <p>GPS is locked. You can turn off your screen and put the phone in your pocket.</p>
+        <button class="btn" style="background:#555; box-shadow:0 5px 0 #222;" onclick="location.reload()">Stop Tracking</button>
+    </div>
+</div>
+
+<!-- Hidden Video Hack to prevent Android from sleeping -->
+<video id="keepAliveVideo" playsinline muted loop>
+    <source src="https://raw.githubusercontent.com/anars/blank-audio/master/250-milliseconds-of-silence.mp3" type="audio/mp3">
+</video>
+
+<!-- ADMIN VIEW -->
+<div id="map"></div>
+
+<script>
+    const TOPIC = 'ovenx_hq_tracking_system'; // Change this to a secret name
+    const ntfyUrl = `https://ntfy.sh/${TOPIC}`;
+    const urlParams = new URLSearchParams(window.location.search);
+    const isAdmin = urlParams.get('admin') === 'true';
+
+    if (isAdmin) initAdmin();
+
+    async function startRider() {
+        const name = document.getElementById('riderName').value.trim();
+        if (!name) return alert("Enter name!");
+
+        // 1. ACTIVATE THE "KEEP ALIVE" HACK
+        const video = document.getElementById('keepAliveVideo');
+        video.play(); // Playing media prevents Android from suspending the browser
+
+        // 2. REQUEST WAKE LOCK (Prevents CPU Sleep)
+        if ('wakeLock' in navigator) {
+            try { await navigator.wakeLock.request('screen'); } catch (e) {}
+        }
+
+        document.getElementById('setup-box').style.display = 'none';
+        document.getElementById('active-box').style.display = 'block';
+        document.getElementById('status-bar').style.display = 'block';
+        document.getElementById('hello-name').innerText = "ONLINE: " + name.toUpperCase();
+
+        // 3. START HIGH ACCURACY GPS
+        navigator.geolocation.watchPosition((pos) => {
+            const payload = {
+                name: name,
+                lat: pos.coords.latitude,
+                lng: pos.coords.longitude,
+                speed: pos.coords.speed ? Math.round(pos.coords.speed * 3.6) : 0, // km/h
+                time: Date.now()
+            };
+
+            fetch(ntfyUrl, {
+                method: 'POST',
+                body: JSON.stringify(payload)
+            });
+        }, (err) => {
+            console.error(err);
+        }, { 
+            enableHighAccuracy: true, 
+            maximumAge: 0, 
+            timeout: 5000 
+        });
+    }
+
+    function initAdmin() {
+        document.getElementById('rider-view').style.display = 'none';
+        document.getElementById('main-header').innerText = "ADMIN LIVE MAP";
+        document.getElementById('map').style.display = 'block';
+        
+        const map = L.map('map').setView([31.5204, 74.3587], 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+        let markers = {};
+
+        const eventSource = new EventSource(`${ntfyUrl}/sse`);
+        eventSource.onmessage = (e) => {
+            try {
+                const raw = JSON.parse(e.data);
+                const rider = JSON.parse(raw.message);
+
+                const pos = [rider.lat, rider.lng];
+                const info = `<b>${rider.name}</b><br>${rider.speed} km/h`;
+
+                if (markers[rider.name]) {
+                    markers[rider.name].setLatLng(pos).setTooltipContent(info);
+                } else {
+                    markers[rider.name] = L.marker(pos).addTo(map)
+                        .bindTooltip(info, {permanent: true, direction: 'top', className: 'rider-label'})
+                        .openTooltip();
+                }
+            } catch (err) {}
+        };
+    }
+</script>
+</body>
+</html>
