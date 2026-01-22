@@ -7,6 +7,8 @@
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
 
     <style>
         :root { --red: #8b0000; --orange: #f37021; --white: #ffffff; }
@@ -15,20 +17,24 @@
 
         #admin-panel, #rider-app { display: none; height: calc(100vh - 55px); width: 100%; position: relative; }
         
-        /* Rider App UI */
-        #rider-app { background: white; padding: 20px; box-sizing: border-box; text-align: center; overflow-y: auto; display: none; }
+        /* Rider UI */
+        #rider-app { background: white; padding: 20px; box-sizing: border-box; text-align: center; overflow-y: auto; }
         .card { background: #fff; padding: 25px; border-radius: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); border: 1px solid #eee; margin-bottom: 20px; }
         .btn-main { background: var(--orange); color: white; padding: 18px; border-radius: 50px; border: none; font-weight: 900; width: 100%; cursor: pointer; font-size: 16px; box-shadow: 0 5px 0 #b34e12; margin-top: 15px; }
-        .btn-check { background: #444; color: white; padding: 12px; border-radius: 10px; border: none; width: 100%; margin-top: 10px; font-weight: bold; font-size: 12px; }
-        
-        #sig-count { font-size: 40px; color: var(--orange); font-weight: 900; margin: 10px 0; }
-        #error-msg { background: #ffebee; color: #c62828; padding: 10px; border-radius: 10px; font-size: 12px; margin-top: 15px; display: none; border: 1px solid #ef9a9a; }
+        .btn-download { background: #2ecc71; color: white; padding: 12px; border-radius: 10px; border: none; width: 100%; font-weight: 900; display: none; margin-bottom: 15px; }
+        input { width: 100%; padding: 15px; border-radius: 10px; border: 1px solid #ddd; text-align: center; font-size: 18px; margin-top: 20px; }
 
-        /* Admin Map UI */
+        /* Admin UI */
         #map { height: 100%; width: 100%; }
-        #sidebar { position: absolute; top: 10px; left: 10px; width: 240px; max-height: 60%; background: rgba(255,255,255,0.9); z-index: 1000; border-radius: 15px; padding: 10px; border: 1px solid var(--orange); overflow-y: auto; }
+        #sidebar { position: absolute; top: 10px; left: 10px; width: 240px; max-height: 60%; background: rgba(255,255,255,0.95); z-index: 1000; border-radius: 15px; padding: 15px; border: 2px solid var(--orange); overflow-y: auto; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+        .rider-item { padding: 10px; border-bottom: 1px solid #eee; font-size: 13px; }
+        .rider-item b { color: var(--red); }
         .map-tools { position: absolute; bottom: 30px; right: 20px; z-index: 1000; display: flex; flex-direction: column; gap: 10px; }
         .tool-btn { width: 50px; height: 50px; border-radius: 12px; background: white; border: 1px solid var(--orange); font-size: 20px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        
+        /* Smooth Animation */
+        .leaflet-marker-icon { transition: transform 0.8s linear !important; }
+        .rider-tooltip { background: var(--orange); color: white; border: 2px solid white; border-radius: 8px; padding: 5px 10px; font-weight: bold; text-align: center; }
     </style>
 </head>
 <body>
@@ -36,38 +42,36 @@
 <div id="main-wrapper" style="height:100vh; display:flex; flex-direction:column;">
     <header>
         <h1 style="margin:0; font-size: 18px;">OVEN <span style="color:var(--orange)">X</span> HQ</h1>
-        <div id="active-count" style="font-size:11px; font-weight:900;">SYSTEM ACTIVE</div>
+        <div id="status-tag" style="font-size:11px; font-weight:900;">PERSISTENT CLOUD</div>
     </header>
 
-    <!-- RIDER VIEW -->
     <div id="rider-app">
+        <button id="installBtn" class="btn-download" onclick="installPWA()">⬇️ DOWNLOAD OVEN X APP</button>
+        
         <div class="card" id="login-screen">
-            <h2 style="color:var(--red); margin:0;">Rider Dispatch</h2>
-            <p style="color:#777; font-size:13px;">Gulgasht Block A HQ</p>
-            <input type="text" id="riderName" placeholder="Full Name" style="width:100%; padding:15px; border-radius:10px; border:1px solid #ddd; text-align:center; font-size:18px;">
-            <button class="btn-check" onclick="requestPermission()">STEP 1: ENABLE GPS</button>
-            <button class="btn-main" onclick="startShift()">STEP 2: START SHIFT</button>
-            <div id="error-msg"></div>
+            <h2 style="color:var(--red); margin:0;">Rider Login</h2>
+            <p style="color:#777; font-size:13px;">Gulgasht Block A Dispatch</p>
+            <input type="text" id="riderName" placeholder="Enter Full Name">
+            <button class="btn-main" onclick="startShift()">START SHIFT</button>
         </div>
 
         <div class="card" id="active-screen" style="display:none;">
             <h2 id="display-name" style="color:var(--red); margin:0;"></h2>
-            <div style="color:#2e7d32; font-weight:bold; margin:10px 0;">● TRACKING ACTIVE</div>
-            <div id="sig-count">0</div>
-            <p style="margin:0; font-size:12px; color:#999;">Signals Sent to HQ</p>
-            <button onclick="localStorage.clear(); location.reload();" style="margin-top:20px; background:none; border:none; color:#bbb; text-decoration:underline;">Logout</button>
+            <div style="color:#2e7d32; font-weight:bold; margin:20px 0;">● LIVE & PERSISTENT</div>
+            <p style="font-size: 12px; color: #666;">Signals Sent: <span id="sig-count">0</span></p>
+            <button onclick="endShift()" style="margin-top:20px; background:none; border:none; color:#bbb; text-decoration:underline; font-size: 12px;">End Shift Early</button>
         </div>
     </div>
 
-    <!-- ADMIN VIEW -->
     <div id="admin-panel">
         <div id="sidebar">
-            <h4 style="margin:0 0 10px 0; border-bottom:1px solid #ddd;">LIVE RIDERS</h4>
-            <div id="rider-list"></div>
+            <h4 style="margin:0 0 10px 0; color:var(--red); border-bottom: 2px solid var(--orange);">LIVE FLEET</h4>
+            <div id="rider-list">Waiting for signals...</div>
         </div>
         <div id="map"></div>
         <div class="map-tools">
-            <button class="tool-btn" onclick="map.flyTo([30.216962, 71.470274], 18)">🏠</button>
+            <button class="tool-btn" onclick="focusShop()">🏠</button>
+            <button class="tool-btn" onclick="focusAll()">🚴</button>
         </div>
     </div>
 </div>
@@ -75,16 +79,19 @@
 <audio id="stayAlive" loop playsinline><source src="data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAAAA== " type="audio/wav"></audio>
 
 <script>
-    const SHOP = [30.216962, 71.470274];
-    const TOPIC = 'ovenx_hq_dispatch_2026';
-    let map, markers = {}, fleet = {}, count = 0;
+    // --- FIREBASE CONFIG ---
+    const firebaseConfig = { databaseURL: "https://ovenx-tracking-default-rtdb.asia-southeast1.firebasedatabase.app/" };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
 
-    const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
+    const SHOP = [30.216949, 71.470271];
+    let map, markers = {}, fleet = {}, sigs = 0;
 
     window.onload = () => {
-        if (!isMobile) {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('admin') === 'true') {
             document.getElementById('admin-panel').style.display = 'block';
-            initMap();
+            initAdminMap();
         } else {
             document.getElementById('rider-app').style.display = 'block';
             if(localStorage.getItem('ovenx_rider')) {
@@ -93,61 +100,93 @@
         }
     };
 
-    // Forces the phone to show the GPS prompt
-    function requestPermission() {
-        navigator.geolocation.getCurrentPosition(
-            () => { alert("✅ GPS Access Granted!"); document.getElementById('error-msg').style.display='none'; },
-            (err) => { 
-                document.getElementById('error-msg').innerText = "❌ GPS Error: Please go to App Settings and allow Location.";
-                document.getElementById('error-msg').style.display = 'block';
-            },
-            { enableHighAccuracy: true }
-        );
-    }
-
-    async function startShift() {
-        const name = document.getElementById('riderName').value.trim();
+    // --- RIDER LOGIC ---
+    function startShift() {
+        const name = document.getElementById('riderName').value.trim().replace(/\s+/g, '_');
         if(!name) return alert("Enter Name");
         
         localStorage.setItem('ovenx_rider', name);
         document.getElementById('stayAlive').play();
-
         document.getElementById('login-screen').style.display = 'none';
         document.getElementById('active-screen').style.display = 'block';
-        document.getElementById('display-name').innerText = name.toUpperCase();
+        document.getElementById('display-name').innerText = name.replace(/_/g, ' ');
 
-        const start = Date.now();
-        
         navigator.geolocation.watchPosition((pos) => {
-            const data = { n: name, lt: pos.coords.latitude, lg: pos.coords.longitude, s: Math.round((pos.coords.speed || 0) * 3.6), start: start };
-            fetch(`https://ntfy.sh/${TOPIC}`, { method: 'POST', body: JSON.stringify(data) })
-            .then(() => { count++; document.getElementById('sig-count').innerText = count; });
-        }, (err) => {
-            console.log(err);
-        }, { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 });
+            const data = {
+                lt: pos.coords.latitude,
+                lg: pos.coords.longitude,
+                s: Math.round((pos.coords.speed || 0) * 3.6),
+                lastSeen: Date.now(),
+                status: 'online'
+            };
+            db.ref('riders/' + name).set(data).then(() => {
+                sigs++;
+                document.getElementById('sig-count').innerText = sigs;
+            });
+        }, null, { enableHighAccuracy: true });
     }
 
-    function initMap() {
-        map = L.map('map', { zoomControl: false }).setView(SHOP, 17);
+    function endShift() {
+        if(confirm("End shift?")) {
+            const name = localStorage.getItem('ovenx_rider');
+            db.ref('riders/' + name + '/status').set('offline');
+            localStorage.removeItem('ovenx_rider');
+            location.reload();
+        }
+    }
+
+    // --- ADMIN PERSISTENT LOGIC ---
+    function initAdminMap() {
+        map = L.map('map', { zoomControl: false }).setView(SHOP, 18);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-        L.marker(SHOP).addTo(map).bindTooltip("HQ");
-        
-        const source = new EventSource(`https://ntfy.sh/${TOPIC}/sse`);
-        source.onmessage = (e) => {
-            const d = JSON.parse(JSON.parse(e.data).message);
-            fleet[d.n] = d;
-            const label = `<b>${d.n}</b><br>${d.s} km/h`;
-            if (markers[d.n]) markers[d.n].setLatLng([d.lt, d.lg]).setTooltipContent(label);
-            else markers[d.n] = L.marker([d.lt, d.lg]).addTo(map).bindTooltip(label, { permanent: true });
-            
-            const list = document.getElementById('rider-list');
-            list.innerHTML = '';
-            Object.keys(fleet).forEach(name => {
+        L.marker(SHOP).addTo(map).bindTooltip("HQ - BLOCK A", { permanent: true, direction: 'bottom' });
+
+        // This pulls and updates riders instantly even after a refresh
+        db.ref('riders').on('value', (snapshot) => {
+            const data = snapshot.val();
+            const listContainer = document.getElementById('rider-list');
+            listContainer.innerHTML = '';
+
+            for (let name in data) {
+                const r = data[name];
+                const isOffline = (Date.now() - r.lastSeen > 180000) || r.status === 'offline';
+                const label = `<b>${name.replace(/_/g, ' ')}</b><br>${isOffline ? 'OFFLINE' : r.s + ' km/h'}`;
+                
+                if (markers[name]) {
+                    markers[name].setLatLng([r.lt, r.lg]).setTooltipContent(label);
+                } else {
+                    markers[name] = L.marker([r.lt, r.lg]).addTo(map).bindTooltip(label, { permanent: true, direction: 'top', className: 'rider-tooltip' });
+                }
+
+                markers[name].setOpacity(isOffline ? 0.4 : 1);
+
                 const div = document.createElement('div');
-                div.innerHTML = `<div style="padding:5px; border-bottom:1px solid #eee;"><b>${name}</b><br><small>${fleet[name].s} km/h</small></div>`;
-                list.appendChild(div);
-            });
-        };
+                div.className = 'rider-item';
+                div.innerHTML = `<b>${name.replace(/_/g, ' ')}</b>: ${isOffline ? 'Idle' : r.s + ' km/h'}`;
+                listContainer.appendChild(div);
+            }
+        });
+        setTimeout(() => map.invalidateSize(), 500);
+    }
+
+    function focusShop() { map.flyTo(SHOP, 18); }
+    function focusAll() {
+        const group = new L.featureGroup(Object.values(markers));
+        if (group.getLayers().length > 0) map.fitBounds(group.getBounds().pad(0.5));
+    }
+
+    // PWA Install Logic
+    let deferredPrompt;
+    window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        document.getElementById('installBtn').style.display = 'block';
+    });
+    function installPWA() {
+        if (deferredPrompt) {
+            deferredPrompt.prompt();
+            deferredPrompt.userChoice.then(() => { deferredPrompt = null; document.getElementById('installBtn').style.display = 'none'; });
+        }
     }
 </script>
 </body>
