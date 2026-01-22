@@ -3,138 +3,168 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Oven X - Always-On Tracker</title>
+    <title>Oven X - Rider Command</title>
     
+    <!-- Maps and Communication -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <style>
         :root { --red: #8b0000; --orange: #f37021; --bg: #fff9f5; }
-        body, html { margin: 0; padding: 0; font-family: sans-serif; height: 100%; background: var(--bg); }
-        header { background: var(--red); color: white; padding: 15px; text-align: center; font-weight: 900; border-bottom: 5px solid var(--orange); }
-        .card { background: white; margin: 15px; padding: 25px; border-radius: 25px; box-shadow: 0 10px 20px rgba(0,0,0,0.1); text-align: center; }
-        input { width: 85%; padding: 15px; border-radius: 15px; border: 2px solid #ddd; margin-bottom: 20px; font-size: 16px; }
-        .btn { background: var(--orange); color: white; padding: 18px; border-radius: 50px; border: none; font-weight: 900; width: 100%; cursor: pointer; box-shadow: 0 5px 0 #b34e12; text-transform: uppercase; }
-        #status-bar { background: #25D366; color: white; padding: 10px; font-size: 12px; text-align: center; font-weight: bold; display: none; }
-        #map { height: calc(100% - 60px); width: 100%; display: none; }
-        .warning-box { background: #fff3cd; color: #856404; padding: 15px; border-radius: 15px; font-size: 13px; text-align: left; margin-bottom: 15px; border: 1px solid #ffeeba; }
-        /* Hide the hack video */
+        body, html { margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; height: 100%; background: var(--bg); overflow: hidden; }
+        
+        header { background: var(--red); color: white; padding: 15px; text-align: center; font-weight: 900; border-bottom: 5px solid var(--orange); position: relative; z-index: 10; }
+        header span { color: var(--orange); }
+
+        /* UI Containers */
+        .container { display: flex; flex-direction: column; height: 100%; }
+        #rider-view, #admin-view { flex: 1; display: none; overflow-y: auto; }
+
+        /* Rider UI */
+        .card { background: white; margin: 20px; padding: 30px; border-radius: 25px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); text-align: center; }
+        .warning { background: #fff3cd; color: #856404; padding: 15px; border-radius: 15px; font-size: 13px; margin-bottom: 20px; border: 1px solid #ffeeba; text-align: left; }
+        input { width: 90%; padding: 15px; border-radius: 15px; border: 2px solid #ddd; margin-bottom: 20px; font-size: 18px; outline: none; }
+        .btn { background: var(--orange); color: white; padding: 20px; border-radius: 50px; border: none; font-weight: 900; width: 100%; cursor: pointer; box-shadow: 0 5px 0 #b34e12; text-transform: uppercase; font-size: 18px; }
+        .btn:active { transform: translateY(3px); box-shadow: 0 2px 0 #b34e12; }
+        
+        #status-light { display: inline-block; width: 12px; height: 12px; background: #25D366; border-radius: 50%; margin-right: 5px; animation: blink 1s infinite; }
+        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
+
+        /* Admin Map */
+        #map { height: 100%; width: 100%; }
+        .rider-label { background: white; border: 2px solid var(--red); padding: 2px 8px; border-radius: 5px; font-weight: bold; color: var(--red); }
+
         #keepAliveVideo { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
     </style>
 </head>
 <body>
 
-<header id="main-header">OVEN X <span>TRACKER</span></header>
-<div id="status-bar">📡 TRACKING ACTIVE (SCREEN OFF OK)</div>
+<div class="container">
+    <header id="top-header">OVEN X <span>TRACKER</span></header>
 
-<!-- RIDER VIEW -->
-<div id="rider-view">
-    <div class="card" id="setup-box">
-        <div class="warning-box">
-            <b>⚠️ ANDROID SETUP:</b><br>
-            For tracking to work with screen off:<br>
-            1. Long press Chrome icon > <b>App Info</b><br>
-            2. Go to <b>Battery</b><br>
-            3. Select <b>"Unrestricted"</b>
+    <!-- RIDER SECTION -->
+    <div id="rider-view">
+        <div class="card" id="login-card">
+            <div class="warning">
+                <b>⚙️ ANDROID SETUP:</b><br>
+                1. Long press Chrome icon > App Info<br>
+                2. Battery > <b>Unrestricted</b><br>
+                3. Keep this page open.
+            </div>
+            <h3>RIDER LOGIN</h3>
+            <input type="text" id="riderName" placeholder="Enter Name">
+            <button class="btn" onclick="startTracking()">Start Delivery</button>
         </div>
-        <h3>RIDER LOGIN</h3>
-        <input type="text" id="riderName" placeholder="Enter Your Name">
-        <button class="btn" onclick="startRider()">Start Delivery</button>
+
+        <div class="card" id="active-card" style="display:none;">
+            <h2 id="name-tag"></h2>
+            <div style="font-size: 20px; font-weight: bold; color: #25D366;">
+                <span id="status-light"></span> TRACKING LIVE
+            </div>
+            <p style="color: #666; margin-top: 20px;">You can now turn off your screen.<br>Put the phone in your pocket.</p>
+            <button class="btn" style="background:#444; box-shadow:0 5px 0 #222; margin-top:30px;" onclick="location.reload()">Stop & Go Offline</button>
+        </div>
     </div>
 
-    <div class="card" id="active-box" style="display:none;">
-        <h2 id="hello-name"></h2>
-        <p>GPS is locked. You can turn off your screen and put the phone in your pocket.</p>
-        <button class="btn" style="background:#555; box-shadow:0 5px 0 #222;" onclick="location.reload()">Stop Tracking</button>
+    <!-- ADMIN SECTION -->
+    <div id="admin-view">
+        <div id="map"></div>
     </div>
 </div>
 
-<!-- Hidden Video Hack to prevent Android from sleeping -->
+<!-- Silent Video Hack -->
 <video id="keepAliveVideo" playsinline muted loop>
     <source src="https://raw.githubusercontent.com/anars/blank-audio/master/250-milliseconds-of-silence.mp3" type="audio/mp3">
 </video>
 
-<!-- ADMIN VIEW -->
-<div id="map"></div>
-
 <script>
-    const TOPIC = 'ovenx_hq_tracking_system'; // Change this to a secret name
-    const ntfyUrl = `https://ntfy.sh/${TOPIC}`;
-    const urlParams = new URLSearchParams(window.location.search);
-    const isAdmin = urlParams.get('admin') === 'true';
+    // --- SETTINGS ---
+    const SECRET_TOPIC = 'ovenx_lahore_pindi_hq_track'; // KEEP THIS THE SAME FOR RIDER AND ADMIN
+    const NTFY_URL = `https://ntfy.sh/${SECRET_TOPIC}`;
 
-    if (isAdmin) initAdmin();
+    // --- DETECT ROLE ---
+    const params = new URLSearchParams(window.location.search);
+    const isAdmin = params.get('admin') === 'true';
 
-    async function startRider() {
-        const name = document.getElementById('riderName').value.trim();
-        if (!name) return alert("Enter name!");
-
-        // 1. ACTIVATE THE "KEEP ALIVE" HACK
-        const video = document.getElementById('keepAliveVideo');
-        video.play(); // Playing media prevents Android from suspending the browser
-
-        // 2. REQUEST WAKE LOCK (Prevents CPU Sleep)
-        if ('wakeLock' in navigator) {
-            try { await navigator.wakeLock.request('screen'); } catch (e) {}
-        }
-
-        document.getElementById('setup-box').style.display = 'none';
-        document.getElementById('active-box').style.display = 'block';
-        document.getElementById('status-bar').style.display = 'block';
-        document.getElementById('hello-name').innerText = "ONLINE: " + name.toUpperCase();
-
-        // 3. START HIGH ACCURACY GPS
-        navigator.geolocation.watchPosition((pos) => {
-            const payload = {
-                name: name,
-                lat: pos.coords.latitude,
-                lng: pos.coords.longitude,
-                speed: pos.coords.speed ? Math.round(pos.coords.speed * 3.6) : 0, // km/h
-                time: Date.now()
-            };
-
-            fetch(ntfyUrl, {
-                method: 'POST',
-                body: JSON.stringify(payload)
-            });
-        }, (err) => {
-            console.error(err);
-        }, { 
-            enableHighAccuracy: true, 
-            maximumAge: 0, 
-            timeout: 5000 
-        });
+    if (isAdmin) {
+        showAdmin();
+    } else {
+        showRider();
     }
 
-    function initAdmin() {
-        document.getElementById('rider-view').style.display = 'none';
-        document.getElementById('main-header').innerText = "ADMIN LIVE MAP";
-        document.getElementById('map').style.display = 'block';
+    // --- RIDER FUNCTIONS ---
+    function showRider() {
+        document.getElementById('rider-view').style.display = 'block';
+    }
+
+    async function startTracking() {
+        const name = document.getElementById('riderName').value.trim();
+        if (!name) return alert("Please enter your name!");
+
+        // Play silent video to keep Android Chrome alive in background
+        const video = document.getElementById('keepAliveVideo');
+        video.play();
+
+        // WakeLock prevents the CPU from sleeping
+        if ('wakeLock' in navigator) {
+            try { await navigator.wakeLock.request('screen'); } catch (err) {}
+        }
+
+        document.getElementById('login-card').style.display = 'none';
+        document.getElementById('active-card').style.display = 'block';
+        document.getElementById('name-tag').innerText = "HI, " + name.toUpperCase();
+
+        // Start GPS
+        navigator.geolocation.watchPosition((pos) => {
+            const data = {
+                n: name,
+                lt: pos.coords.latitude,
+                lg: pos.coords.longitude,
+                s: pos.coords.speed ? Math.round(pos.coords.speed * 3.6) : 0,
+                t: Date.now()
+            };
+
+            fetch(NTFY_URL, {
+                method: 'POST',
+                body: JSON.stringify(data)
+            });
+        }, (err) => {
+            console.error("GPS Error", err);
+        }, { enableHighAccuracy: true });
+    }
+
+    // --- ADMIN FUNCTIONS ---
+    function showAdmin() {
+        document.getElementById('admin-view').style.display = 'block';
+        document.getElementById('top-header').innerHTML = "OVEN X <span>LIVE MAP</span>";
         
+        // Initialize Map
         const map = L.map('map').setView([31.5204, 74.3587], 13);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
         let markers = {};
 
-        const eventSource = new EventSource(`${ntfyUrl}/sse`);
-        eventSource.onmessage = (e) => {
+        // Receive Data
+        const source = new EventSource(`${NTFY_URL}/sse`);
+        source.onmessage = (event) => {
             try {
-                const raw = JSON.parse(e.data);
+                const raw = JSON.parse(event.data);
                 const rider = JSON.parse(raw.message);
+                
+                const pos = [rider.lt, rider.lg];
+                const info = `<b>${rider.n}</b><br>${rider.s} km/h`;
 
-                const pos = [rider.lat, rider.lng];
-                const info = `<b>${rider.name}</b><br>${rider.speed} km/h`;
-
-                if (markers[rider.name]) {
-                    markers[rider.name].setLatLng(pos).setTooltipContent(info);
+                if (markers[rider.n]) {
+                    markers[rider.n].setLatLng(pos).setTooltipContent(info);
                 } else {
-                    markers[rider.name] = L.marker(pos).addTo(map)
+                    markers[rider.n] = L.marker(pos).addTo(map)
                         .bindTooltip(info, {permanent: true, direction: 'top', className: 'rider-label'})
                         .openTooltip();
                 }
-            } catch (err) {}
+            } catch (e) {}
         };
     }
 </script>
+
 </body>
 </html>
