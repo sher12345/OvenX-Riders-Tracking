@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Oven X - Multan HQ</title>
+    <title>Oven X - Gulgasht HQ</title>
     
+    <!-- External Assets -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
@@ -12,99 +13,102 @@
         :root { --red: #8b0000; --orange: #f37021; --dark: #1a1a1a; --white: #ffffff; }
         body, html { margin: 0; padding: 0; font-family: 'Segoe UI', Roboto, sans-serif; height: 100%; background: #f4f4f4; overflow: hidden; }
         
-        /* HEADER */
+        /* HEADER BAR */
         header { 
             background: var(--red); color: white; padding: 12px 20px; 
             display: flex; justify-content: space-between; align-items: center;
             box-shadow: 0 4px 10px rgba(0,0,0,0.3); z-index: 1000; position: relative;
             border-bottom: 4px solid var(--orange);
         }
-        header h1 { margin: 0; font-size: 20px; text-transform: uppercase; letter-spacing: 1px; }
+        header h1 { margin: 0; font-size: 18px; text-transform: uppercase; letter-spacing: 1px; }
         header span { color: var(--orange); }
 
-        /* RIDER VIEW UI */
+        /* RIDER INTERFACE */
         #rider-view { height: 100%; display: none; padding-top: 40px; box-sizing: border-box; }
         .card { background: white; margin: 0 auto; width: 85%; max-width: 400px; padding: 30px; border-radius: 30px; box-shadow: 0 15px 35px rgba(0,0,0,0.1); text-align: center; }
-        .warning { background: #fff3cd; color: #856404; padding: 15px; border-radius: 15px; font-size: 13px; text-align: left; margin-bottom: 20px; border: 1px solid #ffeeba; }
-        input { width: 100%; padding: 15px; border-radius: 15px; border: 2px solid #eee; margin-bottom: 20px; font-size: 18px; box-sizing: border-box; outline: none; }
+        .setup-warning { background: #fff3cd; color: #856404; padding: 15px; border-radius: 15px; font-size: 12px; text-align: left; margin-bottom: 20px; border: 1px solid #ffeeba; line-height: 1.4; }
+        input { width: 100%; padding: 15px; border-radius: 15px; border: 2px solid #eee; margin-bottom: 20px; font-size: 18px; box-sizing: border-box; outline: none; text-align: center; }
         .btn { background: var(--orange); color: white; padding: 18px; border-radius: 50px; border: none; font-weight: 900; width: 100%; cursor: pointer; box-shadow: 0 5px 0 #b34e12; text-transform: uppercase; transition: 0.2s; }
         .btn:active { transform: translateY(3px); box-shadow: 0 2px 0 #b34e12; }
 
-        /* ADMIN VIEW UI */
+        /* ADMIN INTERFACE */
         #admin-view { height: 100%; display: none; position: relative; }
         #map { height: 100%; width: 100%; z-index: 1; }
 
-        /* MAP BUTTONS */
+        /* NAVIGATION BUTTONS */
         .map-controls {
-            position: absolute; bottom: 30px; right: 20px;
+            position: absolute; bottom: 30px; left: 20px;
             display: flex; flex-direction: column; gap: 10px; z-index: 1000;
         }
         .control-btn {
-            background: var(--white); border: none; width: 55px; height: 55px;
-            border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-            font-size: 24px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+            background: var(--white); border: none; width: 50px; height: 50px;
+            border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            font-size: 22px; cursor: pointer; display: flex; align-items: center; justify-content: center;
         }
 
-        /* TOOLTIP STYLE */
+        /* TOOLTIP & MARKERS */
         .rider-tooltip {
             background: var(--red); color: white; border: 2px solid var(--orange);
-            border-radius: 10px; padding: 6px 12px; font-weight: bold; text-align: center;
+            border-radius: 8px; padding: 5px 10px; font-weight: bold; text-align: center;
             box-shadow: 0 4px 10px rgba(0,0,0,0.2);
         }
-        .branch-marker {
-            background: var(--orange); color: white; padding: 5px 12px;
-            border-radius: 8px; font-weight: 900; border: 2px solid white;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3); font-size: 11px;
+        .hq-marker {
+            background: var(--orange); color: white; padding: 4px 10px;
+            border-radius: 6px; font-weight: 900; border: 2px solid white;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3); font-size: 10px;
         }
 
-        #status-bar { background: #25D366; color: white; text-align: center; padding: 8px; font-weight: bold; font-size: 13px; display: none; }
+        #status-bar { background: #25D366; color: white; text-align: center; padding: 6px; font-weight: bold; font-size: 12px; display: none; }
         #keepAliveVideo { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
     </style>
 </head>
 <body>
 
 <header>
-    <h1>OVEN <span>X</span> HQ</h1>
-    <div id="active-count" style="font-size: 12px; background: rgba(0,0,0,0.2); padding: 5px 10px; border-radius: 20px; display: none;">0 RIDERS</div>
+    <h1>OVEN <span>X</span> GULGASHT HQ</h1>
+    <div id="active-count" style="font-size: 11px; background: rgba(0,0,0,0.2); padding: 5px 10px; border-radius: 20px; display: none;">0 ACTIVE</div>
 </header>
-<div id="status-bar">📡 SIGNAL ACTIVE - DO NOT CLOSE</div>
+<div id="status-bar">📡 SIGNAL LIVE - TRACKING IN PROGRESS</div>
 
-<!-- RIDER INTERFACE -->
+<!-- RIDER VIEW -->
 <div id="rider-view">
     <div class="card" id="login-box">
-        <div class="warning">
-            <b>⚙️ ANDROID SETUP:</b><br>
-            Long press Chrome icon > App Info > Battery > <b>Unrestricted</b>.
+        <div class="setup-warning">
+            <b>REQUIRED ANDROID SETUP:</b><br>
+            1. Long press Chrome > App Info<br>
+            2. Battery > <b>Unrestricted</b><br>
+            3. Do not close this tab.
         </div>
-        <h3 style="color: var(--red); margin-top:0;">RIDER DISPATCH</h3>
-        <input type="text" id="riderName" placeholder="Enter Your Name">
+        <h3 style="color: var(--red); margin: 0 0 15px 0;">RIDER DISPATCH</h3>
+        <input type="text" id="riderName" placeholder="Rider Name">
         <button class="btn" onclick="startRiderSession()">Start Delivery</button>
     </div>
     <div class="card" id="active-box" style="display:none;">
         <h2 id="hello-name" style="color: var(--red); margin: 0;"></h2>
-        <div style="color: #25D366; font-weight: 900; font-size: 20px; margin: 15px 0;">TRACKING ACTIVE</div>
-        <p style="color: #888; font-size: 14px;">Screen can be turned OFF now.</p>
+        <div style="color: #25D366; font-weight: 900; font-size: 22px; margin: 15px 0;">ONLINE</div>
+        <p style="color: #888; font-size: 14px;">Screen can be turned off.<br>GPS will stay active.</p>
         <button class="btn" style="background:#555; box-shadow:0 5px 0 #222;" onclick="location.reload()">End Shift</button>
     </div>
 </div>
 
-<!-- ADMIN INTERFACE -->
+<!-- ADMIN VIEW -->
 <div id="admin-view">
     <div id="map"></div>
     <div class="map-controls">
-        <button class="control-btn" title="Center Shop" onclick="centerShop()">🏪</button>
-        <button class="control-btn" title="Center Riders" onclick="centerRiders()">🚴</button>
+        <button class="control-btn" title="Shop Location" onclick="centerShop()">🏠</button>
+        <button class="control-btn" title="Show All Riders" onclick="centerRiders()">🚴</button>
     </div>
 </div>
 
+<!-- Keep-Alive Hack -->
 <video id="keepAliveVideo" playsinline muted loop>
     <source src="https://raw.githubusercontent.com/anars/blank-audio/master/250-milliseconds-of-silence.mp3" type="audio/mp3">
 </video>
 
 <script>
-    // --- UPDATED COORDINATES ---
+    // --- EXACT GULGASHT COORDINATES ---
     const SHOP_COORD = [30.223300, 71.496100]; 
-    const TOPIC = 'ovenx_multan_hq_track_786'; 
+    const TOPIC = 'ovenx_gulgasht_hq_bridge'; // Secret tunnel ID
     
     const params = new URLSearchParams(window.location.search);
     const isAdmin = params.get('admin') === 'true';
@@ -119,7 +123,7 @@
 
     async function startRiderSession() {
         const name = document.getElementById('riderName').value.trim();
-        if (!name) return alert("Enter name!");
+        if (!name) return alert("Please enter name!");
 
         document.getElementById('keepAliveVideo').play();
         if ('wakeLock' in navigator) { try { await navigator.wakeLock.request('screen'); } catch (e) {} }
@@ -148,12 +152,14 @@
         document.getElementById('admin-view').style.display = 'block';
         document.getElementById('active-count').style.display = 'block';
 
-        map = L.map('map', { zoomControl: false }).setView(SHOP_COORD, 15);
+        map = L.map('map', { zoomControl: false }).setView(SHOP_COORD, 16);
+        
+        // Clean map style
         L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(map);
 
-        // Shop Marker at your exact coordinates
+        // Shop Marker
         L.marker(SHOP_COORD).addTo(map)
-            .bindTooltip("OVENX MULTAN HQ", { permanent: true, direction: 'bottom', className: 'branch-marker' });
+            .bindTooltip("OVENX GULGASHT HQ", { permanent: true, direction: 'bottom', className: 'hq-marker' });
 
         const source = new EventSource(`https://ntfy.sh/${TOPIC}/sse`);
         source.onmessage = (e) => {
@@ -165,9 +171,9 @@
     }
 
     function updateRiderMarker(data) {
-        const durationMinutes = Math.floor((Date.now() - data.start) / 60000);
-        let timeLabel = durationMinutes + "m out";
-        if (durationMinutes > 60) timeLabel = Math.floor(durationMinutes/60) + "h " + (durationMinutes%60) + "m out";
+        const durationMin = Math.floor((Date.now() - data.start) / 60000);
+        let timeLabel = durationMin + "m out";
+        if (durationMin > 60) timeLabel = Math.floor(durationMin/60) + "h " + (durationMin%60) + "m";
 
         const infoText = `<b>${data.n}</b><br><small>${timeLabel}</small><br>${data.spd} km/h`;
 
@@ -178,7 +184,7 @@
                 .bindTooltip(infoText, { permanent: true, direction: 'top', className: 'rider-tooltip' })
                 .openTooltip();
         }
-        document.getElementById('active-count').innerText = `${Object.keys(markers).length} RIDERS`;
+        document.getElementById('active-count').innerText = `${Object.keys(markers).length} ACTIVE`;
     }
 
     function centerShop() { map.flyTo(SHOP_COORD, 17); }
