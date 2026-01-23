@@ -3,185 +3,256 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Oven X Command & Dispatch</title>
+    <title>Oven X - Live Tracking</title>
     
+    <!-- PWA Settings -->
     <meta name="theme-color" content="#8b0000">
     <link rel="icon" href="https://cdn-icons-png.flaticon.com/512/7541/7541900.png">
     
+    <!-- Leaflet & Firebase -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
 
     <style>
-        :root { --red: #8b0000; --orange: #f37021; --white: #ffffff; }
-        body, html { margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; height: 100%; width: 100%; background: #f0f0f0; overflow: hidden; }
-        header { background: var(--red); color: white; padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 4px solid var(--orange); z-index: 5000; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
-
-        #admin-panel, #rider-app { display: none; height: calc(100vh - 55px); width: 100%; position: relative; }
+        :root { --red: #8b0000; --orange: #f37021; --dark: #1a1a1a; --white: #ffffff; }
+        body, html { margin: 0; padding: 0; font-family: 'Segoe UI', Roboto, sans-serif; height: 100%; width: 100%; background: #f4f4f4; overflow: hidden; }
         
-        /* Rider UI */
-        #rider-app { background: white; padding: 20px; box-sizing: border-box; text-align: center; overflow-y: auto; }
-        .card { background: #fff; padding: 25px; border-radius: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); border: 1px solid #eee; margin-bottom: 20px; }
-        .btn-main { background: var(--orange); color: white; padding: 18px; border-radius: 50px; border: none; font-weight: 900; width: 100%; cursor: pointer; font-size: 16px; box-shadow: 0 5px 0 #b34e12; margin-top: 15px; }
-        .btn-download { background: #2ecc71; color: white; padding: 15px; border-radius: 15px; border: none; width: 100%; font-weight: 900; margin-bottom: 20px; cursor: pointer; display: none; }
-        input { width: 100%; padding: 15px; border-radius: 10px; border: 1px solid #ddd; text-align: center; font-size: 18px; margin-top: 20px; }
+        /* Header */
+        header { background: var(--red); color: white; padding: 15px; display: flex; justify-content: space-between; align-items: center; border-bottom: 4px solid var(--orange); z-index: 5000; position: relative; }
+        header h1 { margin: 0; font-size: 18px; letter-spacing: 1px; }
+
+        /* Screens */
+        .screen { display: none; height: calc(100vh - 65px); width: 100%; position: relative; overflow-y: auto; }
+        .active { display: block; }
+
+        /* Login UI */
+        .login-container { padding: 30px; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 80%; }
+        .card { background: white; padding: 25px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 90%; max-width: 400px; text-align: center; }
+        
+        input { width: 100%; padding: 15px; margin: 10px 0; border-radius: 10px; border: 1px solid #ddd; box-sizing: border-box; font-size: 16px; }
+        .btn { width: 100%; padding: 15px; border-radius: 50px; border: none; font-weight: bold; cursor: pointer; font-size: 16px; margin-top: 10px; transition: 0.3s; }
+        .btn-main { background: var(--orange); color: white; box-shadow: 0 4px 0 #b34e12; }
+        .btn-main:active { transform: translateY(3px); box-shadow: 0 1px 0 #b34e12; }
+        .btn-outline { background: transparent; border: 2px solid var(--orange); color: var(--orange); margin-top: 20px; }
 
         /* Admin UI */
-        #map { height: 100%; width: 100%; }
-        #sidebar { position: absolute; top: 10px; left: 10px; width: 250px; max-height: 60%; background: rgba(255,255,255,0.95); z-index: 1000; border-radius: 15px; padding: 15px; border: 2px solid var(--orange); overflow-y: auto; }
-        .reconnecting { color: #d9534f; font-weight: bold; font-size: 10px; animation: blink 1s infinite; }
-        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.3; } }
-        
-        .leaflet-marker-icon { transition: transform 0.8s linear !important; }
-        .rider-tooltip { background: var(--orange); color: white; border: 2px solid white; border-radius: 8px; padding: 5px 10px; font-weight: bold; text-align: center; }
+        #map { height: 100%; width: 100%; background: #e5e3df; }
+        #sidebar { position: absolute; top: 10px; left: 10px; width: 220px; max-height: 50%; background: white; z-index: 1000; border-radius: 10px; padding: 10px; border-left: 5px solid var(--orange); box-shadow: 0 4px 15px rgba(0,0,0,0.2); overflow-y: auto; font-size: 13px; }
+        .rider-row { padding: 8px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; }
+        .online-dot { color: #2ecc71; }
+
+        /* Rider UI */
+        .status-box { padding: 20px; margin-top: 20px; border-radius: 15px; background: #e8f5e9; color: #2e7d32; font-weight: bold; border: 1px solid #2e7d32; }
+        .pulse { animation: shadow-pulse 2s infinite; }
+        @keyframes shadow-pulse { 0% { box-shadow: 0 0 0 0px rgba(46, 125, 50, 0.4); } 100% { box-shadow: 0 0 0 20px rgba(46, 125, 50, 0); } }
+
+        /* PWA Install Button */
+        #installBanner { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 9999; display: none; }
     </style>
 </head>
 <body>
 
-<div id="wrapper">
-    <header>
-        <h1 style="margin:0; font-size: 18px;">OVEN <span style="color:var(--orange)">X</span> DISPATCH</h1>
-        <div id="conn-status" style="font-size:10px; font-weight:900; background:#2ecc71; padding:4px 10px; border-radius:20px;">CLOUD SYNC</div>
-    </header>
+<header>
+    <h1>OVEN <span style="color:var(--orange)">X</span> MULTAN</h1>
+    <div id="sync-indicator" style="font-size:10px; background:#2ecc71; padding:4px 8px; border-radius:10px;">LIVE</div>
+</header>
 
-    <div id="rider-app">
-        <button id="installBtn" class="btn-download" onclick="installPWA()">📲 DOWNLOAD OVEN X APP</button>
-        
-        <div class="card" id="login-screen">
-            <h2 style="color:var(--red); margin:0;">Rider Portal</h2>
-            <p style="color:#777; font-size:13px;">Gulgasht Block A HQ</p>
-            <input type="text" id="riderName" placeholder="Enter Full Name">
-            <button class="btn-main" onclick="startShift()">START SHIFT</button>
-        </div>
+<!-- PWA Install Button -->
+<div id="installBanner">
+    <button class="btn btn-main" onclick="installPWA()" style="padding: 10px 20px;">📲 INSTALL APP</button>
+</div>
 
-        <div class="card" id="active-screen" style="display:none;">
-            <h2 id="display-name" style="color:var(--red); margin:0;"></h2>
-            <div id="sync-status" style="color:#2e7d32; font-weight:bold; margin:20px 0;">● TRACKING ACTIVE</div>
-            <p style="font-size: 11px; color: #666;">Background Signal Enabled</p>
-            <button onclick="localStorage.clear(); location.reload();" style="margin-top:20px; background:none; border:none; color:#bbb; text-decoration:underline; font-size: 12px;">Logout / End Shift</button>
-        </div>
-    </div>
-
-    <div id="admin-panel">
-        <div id="sidebar">
-            <h4 style="margin:0 0 10px 0; color:var(--red); border-bottom: 2px solid var(--orange);">FLEET LIST</h4>
-            <div id="rider-list">Waiting for signals...</div>
-        </div>
-        <div id="map"></div>
+<!-- 1. Selection Screen -->
+<div id="selection-screen" class="screen active">
+    <div class="login-container">
+        <img src="https://cdn-icons-png.flaticon.com/512/7541/7541900.png" width="80" alt="logo">
+        <h2 style="color: var(--red);">Logistics Portal</h2>
+        <button class="btn btn-main" onclick="showScreen('rider-login-screen')">I AM A RIDER</button>
+        <button class="btn btn-outline" onclick="showScreen('admin-login-screen')">ADMIN LOGIN</button>
     </div>
 </div>
 
+<!-- 2. Rider Login Screen -->
+<div id="rider-login-screen" class="screen">
+    <div class="login-container">
+        <div class="card">
+            <h3>Rider Entry</h3>
+            <input type="text" id="riderName" placeholder="Your Full Name">
+            <button class="btn btn-main" onclick="startRiderShift()">START SHIFT</button>
+            <button class="btn" style="background:none; color:grey;" onclick="showScreen('selection-screen')">Back</button>
+        </div>
+    </div>
+</div>
+
+<!-- 3. Admin Login Screen -->
+<div id="admin-login-screen" class="screen">
+    <div class="login-container">
+        <div class="card">
+            <h3>Admin Access</h3>
+            <input type="password" id="adminPass" placeholder="Enter Password">
+            <button class="btn btn-main" onclick="verifyAdmin()">LOGIN TO MAP</button>
+            <button class="btn" style="background:none; color:grey;" onclick="showScreen('selection-screen')">Back</button>
+        </div>
+    </div>
+</div>
+
+<!-- 4. Rider Active Screen -->
+<div id="rider-active-screen" class="screen">
+    <div class="login-container">
+        <div class="card pulse">
+            <h2 id="activeRiderName" style="color:var(--red); margin:0;"></h2>
+            <div class="status-box">TRACKING ACTIVE</div>
+            <p style="font-size: 12px; color: #666; margin-top: 15px;">Keep this window open.<br>Your location is being shared with HQ.</p>
+            <button class="btn btn-outline" onclick="stopShift()" style="border-color: #888; color: #888;">END SHIFT</button>
+        </div>
+    </div>
+</div>
+
+<!-- 5. Admin Panel Screen -->
+<div id="admin-panel-screen" class="screen">
+    <div id="sidebar">
+        <strong style="color:var(--red)">LIVE RIDERS</strong>
+        <div id="rider-list" style="margin-top:10px;">Waiting for GPS...</div>
+    </div>
+    <div id="map"></div>
+</div>
+
+<!-- Audio Hack for Background Geolocation -->
 <audio id="stayAlive" loop playsinline><source src="data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAAAA== " type="audio/wav"></audio>
 
 <script>
-    // --- 1. PWA AUTO-GENERATE (MAKES DOWNLOAD BUTTON WORK) ---
-    const manifest = {
-        "name": "Oven X Dispatch",
-        "short_name": "OvenX",
-        "start_url": "./index.html",
-        "display": "standalone",
-        "background_color": "#8b0000",
-        "theme_color": "#f37021",
-        "icons": [{"src": "https://cdn-icons-png.flaticon.com/512/7541/7541900.png", "sizes": "512x512", "type": "image/png"}]
+    // --- CONFIGURATION ---
+    const firebaseConfig = { 
+        // Replace with your actual Firebase URL
+        databaseURL: "https://ovenx-tracking-default-rtdb.asia-southeast1.firebasedatabase.app/" 
     };
-    const manifestBlob = new Blob([JSON.stringify(manifest)], {type: 'application/json'});
-    const manifestURL = URL.createObjectURL(manifestBlob);
-    const link = document.createElement('link');
-    link.rel = 'manifest';
-    link.href = manifestURL;
-    document.head.appendChild(link);
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    
+    // OvenX Multan Branch Coordinates
+    const SHOP_LOCATION = [30.216949, 71.470271]; 
+    let map, markers = {};
+    let watchID = null;
 
-    // --- 2. SERVICE WORKER AUTO-GENERATE (FIXES WEAK SIGNAL) ---
+    // --- NAVIGATION ---
+    function showScreen(screenId) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        document.getElementById(screenId).classList.add('active');
+        if(screenId === 'admin-panel-screen') initMap();
+    }
+
+    // --- ADMIN LOGIC ---
+    function verifyAdmin() {
+        const pass = document.getElementById('adminPass').value;
+        if(pass === "asdasd@123") {
+            showScreen('admin-panel-screen');
+        } else {
+            alert("Incorrect Password");
+        }
+    }
+
+    function initMap() {
+        if (map) return;
+        map = L.map('map', { zoomControl: false }).setView(SHOP_LOCATION, 15);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+        
+        // Add HQ Marker
+        L.marker(SHOP_LOCATION).addTo(map)
+            .bindTooltip("OvenX Multan (HQ)", { permanent: true, direction: 'top' })
+            .openTooltip();
+
+        // Sync Riders from Firebase
+        db.ref('riders').on('value', (snap) => {
+            const data = snap.val();
+            const listDiv = document.getElementById('rider-list');
+            listDiv.innerHTML = '';
+
+            for (let id in data) {
+                const r = data[id];
+                const isOnline = (Date.now() - r.lastSeen) < 60000; // Online if updated in last 60s
+                
+                if (isOnline) {
+                    const label = `<b>${r.name}</b><br>${r.speed} km/h`;
+                    if (markers[id]) {
+                        markers[id].setLatLng([r.lat, r.lng]).setTooltipContent(label);
+                    } else {
+                        markers[id] = L.marker([r.lat, r.lng]).addTo(map)
+                            .bindTooltip(label, { permanent: true, className: 'rider-tooltip' });
+                    }
+
+                    listDiv.innerHTML += `<div class="rider-row"><span><span class="online-dot">●</span> ${r.name}</span> <b>${r.speed}km/h</b></div>`;
+                } else {
+                    if (markers[id]) {
+                        map.removeLayer(markers[id]);
+                        delete markers[id];
+                    }
+                }
+            }
+        });
+    }
+
+    // --- RIDER LOGIC ---
+    function startRiderShift() {
+        const name = document.getElementById('riderName').value.trim();
+        if(!name) return alert("Please enter your name");
+
+        document.getElementById('activeRiderName').innerText = name;
+        document.getElementById('stayAlive').play(); // Prevents browser sleep
+        showScreen('rider-active-screen');
+
+        const riderID = name.replace(/\s+/g, '_').toLowerCase();
+
+        watchID = navigator.geolocation.watchPosition((pos) => {
+            const riderData = {
+                name: name,
+                lat: pos.coords.latitude,
+                lng: pos.coords.longitude,
+                speed: Math.round((pos.coords.speed || 0) * 3.6),
+                lastSeen: firebase.database.ServerValue.TIMESTAMP
+            };
+            db.ref('riders/' + riderID).set(riderData);
+        }, (err) => {
+            console.error(err);
+            alert("Please enable GPS/Location access");
+        }, {
+            enableHighAccuracy: true,
+            maximumAge: 0
+        });
+    }
+
+    function stopShift() {
+        if(watchID) navigator.geolocation.clearWatch(watchID);
+        location.reload(); 
+    }
+
+    // --- PWA & SERVICE WORKER ---
     const swCode = `
         self.addEventListener('install', e => self.skipWaiting());
-        self.addEventListener('fetch', e => { e.respondWith(fetch(e.request).catch(() => caches.match(e.request))); });
+        self.addEventListener('fetch', e => e.respondWith(fetch(e.request)));
     `;
     const swBlob = new Blob([swCode], {type: 'application/javascript'});
     const swURL = URL.createObjectURL(swBlob);
     if ('serviceWorker' in navigator) { navigator.serviceWorker.register(swURL); }
 
-    // --- 3. DATABASE CONFIG ---
-    const firebaseConfig = { databaseURL: "https://ovenx-tracking-default-rtdb.asia-southeast1.firebasedatabase.app/" };
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
-    const SHOP = [30.216949, 71.470271];
-    let map, markers = {};
-
-    window.onload = () => {
-        const params = new URLSearchParams(window.location.search);
-        if (params.get('admin') === 'true') {
-            document.getElementById('admin-panel').style.display = 'block';
-            initAdminMap();
-        } else {
-            document.getElementById('rider-app').style.display = 'block';
-            if(localStorage.getItem('ovenx_rider')) {
-                document.getElementById('riderName').value = localStorage.getItem('ovenx_rider');
-            }
-        }
-    };
-
-    function startShift() {
-        const name = document.getElementById('riderName').value.trim().replace(/\s+/g, '_');
-        if(!name) return alert("Enter Name");
-        localStorage.setItem('ovenx_rider', name);
-        document.getElementById('stayAlive').play();
-        document.getElementById('login-screen').style.display = 'none';
-        document.getElementById('active-screen').style.display = 'block';
-        document.getElementById('display-name').innerText = name.replace(/_/g, ' ');
-
-        navigator.geolocation.watchPosition((pos) => {
-            const data = {
-                lt: pos.coords.latitude, lg: pos.coords.longitude,
-                s: Math.round((pos.coords.speed || 0) * 3.6),
-                lastSeen: firebase.database.ServerValue.TIMESTAMP,
-                status: 'online'
-            };
-            db.ref('riders/' + name).onDisconnect().update({ status: 'offline' });
-            db.ref('riders/' + name).set(data);
-        }, null, { enableHighAccuracy: true, maximumAge: 0, timeout: 20000 });
-    }
-
-    function initAdminMap() {
-        map = L.map('map', { zoomControl: false }).setView(SHOP, 18);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-        L.marker(SHOP).addTo(map).bindTooltip("HQ - BLOCK A", { permanent: true, direction: 'bottom' });
-
-        db.ref('riders').on('value', (snap) => {
-            const data = snap.val();
-            const list = document.getElementById('rider-list');
-            list.innerHTML = '';
-            const now = Date.now();
-
-            for (let name in data) {
-                const r = data[name];
-                const timeDiff = now - r.lastSeen;
-                const isReconnecting = timeDiff > 60000 && r.status === 'online';
-                const isOffline = r.status === 'offline' || timeDiff > 300000;
-                const label = `<b>${name.replace(/_/g, ' ')}</b><br>${isOffline ? 'Offline' : r.s + ' km/h'}`;
-
-                if (markers[name]) { markers[name].setLatLng([r.lt, r.lg]).setTooltipContent(label); }
-                else { markers[name] = L.marker([r.lt, r.lg]).addTo(map).bindTooltip(label, { permanent: true, direction: 'top', className: 'rider-tooltip' }); }
-                
-                markers[name].setOpacity(isOffline ? 0.3 : (isReconnecting ? 0.6 : 1));
-
-                const div = document.createElement('div');
-                div.style.padding = "8px";
-                div.style.borderBottom = "1px solid #eee";
-                div.innerHTML = `<b>${name.replace(/_/g, ' ')}</b>: ${isOffline ? 'Idle' : r.s + ' km/h'} ${isReconnecting ? '<br><span class="reconnecting">⚠️ POOR SIGNAL</span>' : ''}`;
-                list.appendChild(div);
-            }
-        });
-    }
-
     let deferredPrompt;
     window.addEventListener('beforeinstallprompt', (e) => {
-        e.preventDefault(); deferredPrompt = e;
-        document.getElementById('installBtn').style.display = 'block';
+        e.preventDefault();
+        deferredPrompt = e;
+        document.getElementById('installBanner').style.display = 'block';
     });
+
     function installPWA() {
-        if (deferredPrompt) { deferredPrompt.prompt(); deferredPrompt.userChoice.then(() => { deferredPrompt = null; document.getElementById('installBtn').style.display = 'none'; }); }
+        if (deferredPrompt) {
+            deferredPrompt.prompt();
+            deferredPrompt.userChoice.then(() => {
+                deferredPrompt = null;
+                document.getElementById('installBanner').style.display = 'none';
+            });
+        }
     }
 </script>
+
 </body>
 </html>
