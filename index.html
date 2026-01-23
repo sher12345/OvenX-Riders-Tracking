@@ -3,11 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>OvenX Dispatch (Live)</title>
+    <title>OvenX Dispatch PRO</title>
     
-    <meta name="theme-color" content="#8b0000">
-    <link rel="icon" href="https://cdn-icons-png.flaticon.com/512/7541/7541900.png">
-    
+    <!-- PWA Installation Support -->
+    <link rel="manifest" href="data:application/manifest+json,{'name':'OvenX','short_name':'OvenX','start_url':'.','display':'standalone','background_color':'#8b0000','theme_color':'#8b0000','icons':[{'src':'https://cdn-icons-png.flaticon.com/512/7541/7541900.png','sizes':'512x512','type':'image/png'}]}">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
@@ -15,78 +17,65 @@
 
     <style>
         :root { --red: #8b0000; --orange: #f37021; }
-        body, html { margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; height: 100%; background: #1a1a1a; color: white; overflow: hidden; }
-        
+        body, html { margin: 0; padding: 0; font-family: sans-serif; height: 100%; background: #000; color: white; overflow: hidden; }
         header { background: var(--red); padding: 15px; display: flex; justify-content: space-between; align-items: center; border-bottom: 4px solid var(--orange); }
         .screen { display: none; height: calc(100vh - 65px); width: 100%; position: relative; }
         .active { display: flex; flex-direction: column; align-items: center; justify-content: center; }
-
-        .card { background: #fff; color: #333; padding: 25px; border-radius: 25px; width: 85%; max-width: 350px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-        input { width: 100%; padding: 15px; margin: 15px 0; border-radius: 10px; border: 2px solid #ddd; font-size: 18px; box-sizing: border-box; text-align: center; }
-        
-        .btn { width: 100%; padding: 18px; border-radius: 50px; border: none; font-weight: 900; font-size: 16px; cursor: pointer; }
-        .btn-start { background: var(--orange); color: white; box-shadow: 0 5px 0 #b34e12; }
-        
+        .card { background: #fff; color: #333; padding: 25px; border-radius: 20px; width: 85%; max-width: 350px; text-align: center; }
+        .btn { width: 100%; padding: 18px; border-radius: 50px; border: none; font-weight: bold; font-size: 16px; margin-top: 15px; cursor: pointer; }
+        .btn-start { background: var(--orange); color: white; }
         #map { height: 100%; width: 100%; }
-        #admin-info { position: absolute; top: 10px; left: 10px; z-index: 1000; background: rgba(255,255,255,0.95); color: #000; padding: 12px; border-radius: 12px; width: 200px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
-        
-        .pulse-red { animation: pulse 1.5s infinite; color: red; font-weight: bold; }
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
+        #admin-info { position: absolute; top: 10px; left: 10px; z-index: 1000; background: white; color: #000; padding: 12px; border-radius: 10px; width: 180px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); font-size: 12px; }
+        .status-dot { height: 10px; width: 10px; background: #2ecc71; border-radius: 50%; display: inline-block; margin-right: 5px; animation: blink 1s infinite; }
+        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.3; } }
     </style>
 </head>
 <body>
 
 <header>
-    <h2 style="margin:0; font-size: 18px;">OVEN <span style="color:var(--orange)">X</span> DISPATCH</h2>
-    <div id="connection-status" style="font-size: 10px; padding: 5px 10px; background: #2ecc71; border-radius: 15px;">STABLE</div>
+    <h2 style="margin:0;">OVEN <span style="color:var(--orange)">X</span></h2>
+    <div id="status-text" style="font-size: 10px; font-weight: bold;">STANDBY</div>
 </header>
 
-<!-- START SCREEN -->
 <div id="screen-start" class="screen active">
     <div class="card">
         <h2 style="color:var(--red);">Rider Portal</h2>
-        <input type="text" id="riderName" placeholder="Enter Full Name">
-        <button class="btn btn-start" onclick="startShift()">START SHIFT</button>
+        <input type="text" id="riderName" placeholder="Enter Full Name" style="width:100%; padding:15px; border:1px solid #ddd; border-radius:10px; text-align:center; font-size:18px;">
+        <button class="btn btn-start" onclick="startTracking()">START SHIFT</button>
         <button onclick="showAdminLogin()" style="margin-top:20px; background:none; border:none; color:#999; text-decoration:underline;">Admin Login</button>
     </div>
 </div>
 
-<!-- ADMIN LOGIN -->
 <div id="screen-admin-login" class="screen">
     <div class="card">
         <h3>Admin Access</h3>
-        <input type="password" id="adminPass" placeholder="Password">
-        <button class="btn btn-start" onclick="adminAuth()">Login to Map</button>
-        <p onclick="location.reload()" style="cursor:pointer; color:#777;">Back</p>
+        <input type="password" id="adminPass" placeholder="Password" style="width:100%; padding:15px; border:1px solid #ddd; border-radius:10px; text-align:center;">
+        <button class="btn btn-start" onclick="adminAuth()">Login</button>
     </div>
 </div>
 
-<!-- RIDER ACTIVE (KEEP OPEN) -->
 <div id="screen-rider-active" class="screen">
     <div class="card">
-        <h1 id="activeNameDisplay" style="color:var(--red); margin:0;"></h1>
-        <div class="pulse-red" style="margin: 20px 0; font-size: 14px;">● LIVE TRACKING ENABLED</div>
-        <p style="font-size: 12px; color: #555;"><b>Shift ends at 02:00 AM</b><br>Do not close this tab.<br>You can lock your phone now.</p>
-        <button onclick="location.reload()" style="border:none; background:none; color: #aaa; text-decoration: underline;">End Shift Early</button>
+        <h1 id="activeNameDisplay"></h1>
+        <div style="font-size: 50px; margin: 20px;">📡</div>
+        <p><span class="status-dot"></span> LIVE TRACKING ON</p>
+        <p style="font-size: 11px; color: #666;">SHIFT ENDS AUTOMATICALLY AT 2:00 AM<br>Keep this app open in background.</p>
+        <button onclick="location.reload()" style="background:none; border:none; color:red; text-decoration:underline;">Stop Tracking</button>
     </div>
 </div>
 
-<!-- ADMIN MAP -->
 <div id="screen-admin-map" class="screen">
     <div id="admin-info">
-        <b>Fleet Status</b><hr>
-        <div id="rider-list" style="font-size: 12px;">Searching for signals...</div>
+        <b>Live Fleet</b><hr>
+        <div id="rider-list">Waiting for signals...</div>
     </div>
     <div id="map"></div>
 </div>
 
-<!-- BACKGROUND AUDIO HACK -->
-<audio id="bgAudio" loop playsinline>
-    <source src="data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAAAA==" type="audio/wav">
-</audio>
+<!-- Invisible audio to prevent background sleep -->
+<audio id="stayAliveAudio" loop playsinline src="data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAAAA=="></audio>
 
 <script>
-    // --- DATABASE ---
     const firebaseConfig = { databaseURL: "https://ovenx-tracking-default-rtdb.asia-southeast1.firebasedatabase.app/" };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
@@ -100,17 +89,16 @@
 
     function showAdminLogin() { showScreen('screen-admin-login'); }
 
-    // --- ADMIN LOGIC ---
     function adminAuth() {
         if(document.getElementById('adminPass').value === 'asdasd@123') {
             showScreen('screen-admin-map');
             initMap();
-        } else { alert("Incorrect Password"); }
+        } else { alert("Wrong Password"); }
     }
 
     function initMap() {
         if(map) return;
-        map = L.map('map', { zoomControl: false }).setView(SHOP, 15);
+        map = L.map('map', { zoomControl: false }).setView(SHOP, 14);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
         L.marker(SHOP).addTo(map).bindTooltip("HQ - MULTAN", {permanent:true});
 
@@ -120,75 +108,53 @@
             list.innerHTML = '';
             for(let id in data) {
                 const r = data[id];
-                if(Date.now() - r.t < 120000) { // Active in last 2 mins
+                const active = (Date.now() - r.t) < 60000;
+                if(active) {
                     if(markers[id]) markers[id].setLatLng([r.lat, r.lng]);
                     else markers[id] = L.marker([r.lat, r.lng]).addTo(map).bindTooltip(r.name, {permanent:true});
-                    list.innerHTML += `<div>🟢 ${r.name} (${r.speed}km/h)</div>`;
+                    list.innerHTML += `<div>🟢 ${r.name}</div>`;
                 }
             }
         });
     }
 
-    // --- RIDER LOGIC (STAY ALIVE) ---
-    async function startShift() {
+    async function startTracking() {
         const name = document.getElementById('riderName').value.trim();
         if(!name) return alert("Enter Name");
-
+        
         document.getElementById('activeNameDisplay').innerText = name;
         showScreen('screen-rider-active');
 
-        // 1. Start Audio Heartbeat (Critical for Background)
-        const audio = document.getElementById('bgAudio');
-        audio.play().catch(e => console.log("Audio trigger required"));
+        // FORCE SCREEN & CPU TO STAY ON
+        try { if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen'); } catch(e){}
+        document.getElementById('stayAliveAudio').play();
 
-        // 2. Request Wake Lock (Keep screen process alive)
-        try {
-            if ('wakeLock' in navigator) {
-                wakeLock = await navigator.wakeLock.request('screen');
-            }
-        } catch (err) { console.log("WakeLock failed"); }
-
-        // 3. High-Intensity Tracking
+        // PERSISTENT GPS LOOP
         watchID = navigator.geolocation.watchPosition(pos => {
-            
-            // Check if it's 2:00 AM - If so, STOP
+            // Auto-Stop at 2:00 AM
             const now = new Date();
-            if(now.getHours() === 2 && now.getMinutes() === 0) {
-                location.reload();
-            }
+            if(now.getHours() === 2 && now.getMinutes() === 0) location.reload();
 
-            const riderData = {
+            db.ref('riders/' + name.replace(/\s/g,'_')).set({
                 name: name,
                 lat: pos.coords.latitude,
                 lng: pos.coords.longitude,
-                speed: Math.round((pos.coords.speed || 0) * 3.6),
                 t: Date.now()
-            };
-
-            db.ref('riders/' + name.replace(/\s/g,'_')).set(riderData);
-            
-            // Connection Status Update
-            document.getElementById('connection-status').innerText = "LIVE SIGNAL";
-            document.getElementById('connection-status').style.background = "#2ecc71";
-            
-        }, (err) => {
-            document.getElementById('connection-status').innerText = "SIGNAL LOST";
-            document.getElementById('connection-status').style.background = "#e74c3c";
-        }, {
-            enableHighAccuracy: true,
-            maximumAge: 0,
-            timeout: 5000
+            });
+            document.getElementById('status-text').innerText = "SIGNAL ACTIVE";
+        }, null, { 
+            enableHighAccuracy: true, 
+            maximumAge: 0, 
+            timeout: 10000 
         });
     }
 
-    // Handle background tab suspension
-    document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible' && wakeLock !== null) {
-            // Re-acquire wake lock if it was lost
-            navigator.wakeLock.request('screen').then(lock => wakeLock = lock);
+    // Re-acquire lock if user switches apps and comes back
+    document.addEventListener('visibilitychange', async () => {
+        if (wakeLock !== null && document.visibilityState === 'visible') {
+            wakeLock = await navigator.wakeLock.request('screen');
         }
     });
-
 </script>
 </body>
 </html>
